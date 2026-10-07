@@ -131,6 +131,11 @@ class SyncViewModel(app: Application) : AndroidViewModel(app) {
         NotesSync.sendNow(getApplication())
     }
 
+    fun setSyncBooks(on: Boolean) = viewModelScope.launch {
+        store.setSyncBooks(on)
+        if (on) NotesSync.sendNow(getApplication())
+    }
+
     fun sendNow() {
         viewModelScope.launch { store.recordError(null) }
         NotesSync.sendNow(getApplication())
@@ -172,7 +177,7 @@ private fun NotConnected(signIn: SignIn, model: SyncViewModel) {
     Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Spacer(Modifier.height(4.dp))
         Text(
-            "Reed can send your book notes to your Nextcloud. The home app on your computer picks them up and files each book as a note, every passage quoted above what you wrote.",
+            "Reed can keep your book notes in step with the home app on your computer, through your Nextcloud: each book becomes a note there, every passage quoted above what you wrote, and edits made in home come back here.",
             style = MaterialTheme.typography.bodyLarge,
         )
         Text(
@@ -242,6 +247,21 @@ private fun Connected(s: SyncSettings, model: SyncViewModel) {
         colors = rowColors,
     )
     HorizontalDivider(Modifier.padding(horizontal = 20.dp))
+    ListItem(
+        headlineContent = { Text("Keep book files on Nextcloud") },
+        supportingContent = {
+            Text(
+                if (s.syncBooks) {
+                    "Books are copied to ${s.folder}/books, and books added on another phone appear here. Removing a book here removes its copy there. ${s.bookFileCount} ${if (s.bookFileCount == 1) "book" else "books"} there now."
+                } else {
+                    "Off: only your notes are sent. On: the books themselves too, as a backup and for your other phones."
+                },
+            )
+        },
+        trailingContent = { Switch(checked = s.syncBooks, onCheckedChange = model::setSyncBooks, enabled = s.enabled) },
+        colors = rowColors,
+    )
+    HorizontalDivider(Modifier.padding(horizontal = 20.dp))
 
     Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         val status = when {
@@ -250,7 +270,7 @@ private fun Connected(s: SyncSettings, model: SyncViewModel) {
             s.lastSentAt != null -> "Up to date: ${s.bookCount} ${if (s.bookCount == 1) "book" else "books"}, last sent ${
                 DateUtils.getRelativeTimeSpanString(s.lastSentAt, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS)
             }."
-            else -> "Sends a moment after you add or change a note, whenever the phone is online."
+            else -> "Sends a moment after you add or change a note, whenever the phone is online. Edits made in home come back the same way."
         }
         Text(
             status,

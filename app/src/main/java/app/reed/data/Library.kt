@@ -77,7 +77,17 @@ class Library(
             staging.delete()
             return@withContext ImportResult.Failed(fileName, ImportFailure.UNREADABLE)
         }
+        importStaged(staging, fileName, id)
+    }
 
+    /** A copy of a book already on this phone at `staging` becomes a library book with this id. */
+    suspend fun importStaged(
+        staging: File,
+        fileName: String,
+        id: String,
+        isPrivate: Boolean = false,
+        addedAt: Long = System.currentTimeMillis(),
+    ): ImportResult = withContext(Dispatchers.IO) {
         val asset = assetRetriever.retrieve(staging).getOrElse {
             Timber.w("Import: couldn't retrieve %s: %s", fileName, it.message)
             val reason = if (staging.looksLikeBook()) ImportFailure.DAMAGED else ImportFailure.UNSUPPORTED
@@ -131,7 +141,8 @@ class Library(
                     filePath = target.absolutePath,
                     coverPath = coverPath,
                     language = publication.metadata.languages.firstOrNull(),
-                    addedAt = System.currentTimeMillis(),
+                    addedAt = addedAt,
+                    isPrivate = isPrivate,
                 ),
             )
             ImportResult.Added(title)
@@ -164,6 +175,15 @@ class Library(
     suspend fun setPrivate(bookId: Long, isPrivate: Boolean) {
         db.books().setPrivate(bookId, isPrivate)
         onNotesChanged()
+    }
+
+    /** Where book files are kept; downloads are staged here before import. */
+    val booksFolder: File get() = booksDir
+
+    /** Apply a change that came from the user's server: no "notes changed" signal, so it isn't sent straight back. */
+    suspend fun applyRemote(update: Note? = null, delete: Note? = null) = withContext(Dispatchers.IO) {
+        update?.let { db.notes().update(it) }
+        delete?.let { db.notes().delete(it) }
     }
 
     /** Every book with its notes, for sending them to the user's server. */

@@ -58,6 +58,8 @@ class NotesSyncTest {
         override suspend fun mkdirs(path: String) { calls += "mkdir $path" }
         override suspend fun put(path: String, body: String) { calls += "put $path"; files[path] = body }
         override suspend fun delete(path: String) { calls += "delete $path"; files.remove(path) }
+        override suspend fun list(dir: String) = files.keys.filter { it.startsWith("$dir/") }.associate { it.removePrefix("$dir/") to "e" }
+        override suspend fun getText(path: String) = files[path]
     }
 
     @Test
@@ -97,5 +99,90 @@ class NotesSyncTest {
         assertEquals(1, r.removed)
         val gone = http.newCall(okhttp3.Request.Builder().url(dav.url(up.path(file.id))).header("Authorization", okhttp3.Credentials.basic("u", "testpass")).build()).execute()
         assertEquals(404, gone.code)
+    }
+}
+
+class TwoWayTest {
+    private val book = Book(
+        id = 7, title = "Der Zauberberg", author = "Thomas Mann", format = BookFormat.EPUB,
+        filePath = "/data/books/zb-uuid.epub", coverPath = null, language = "de", addedAt = 1_000,
+    )
+    private fun n(id: Long, text: String, updated: Long) = Note(
+        id = id, bookId = 7, kind = NoteKind.PASSAGE, locator = "{}", passage = "p", text = text,
+        chapter = null, progression = 0.1, page = null, createdAt = 0, updatedAt = updated,
+    )
+
+    @Test
+    fun `home's edits apply when they are later, deletions too`() {
+        val edits = HomeEdits.parse(
+            """{"format":"reed-notes-edits","version":1,"book":"zb-uuid",
+               "notes":[{"id":"1","text":"from home ","updatedAt":"1970-01-01T00:00:10Z"},{"id":"2","text":"stale","updatedAt":"1970-01-01T00:00:01Z"}],
+               "deleted":[{"id":"3","deletedAt":"1970-01-01T00:00:10Z"},{"id":"4","deletedAt":"1970-01-01T00:00:01Z"}]}""",
+        )!!
+        val plan = planHomeEdits(listOf(n(1, "old", 5_000), n(2, "newer here", 5_000), n(3, "x", 5_000), n(4, "y", 5_000)), edits)
+        assertEquals(listOf("from home"), plan.update.map { it.text })
+        assertEquals(10_000L, plan.update.single().updatedAt)
+        assertEquals(listOf(3L), plan.delete.map { it.id })
+        // Applying the same file again changes nothing.
+        assertEquals(0, planHomeEdits(listOf(plan.update.single()), edits).update.size)
+        assertNull(HomeEdits.parse("""{"format":"other"}"""))
+    }
+
+    @Test
+    fun `deleted notes become tombstones that travel in the export`() {
+        val gone = tombstones(mapOf("b" to setOf("1", "2")), mapOf("b" to setOf("1")), emptyMap(), 50_000)
+        assertEquals(mapOf("b" to mapOf("2" to 50_000L)), gone)
+        // Kept with their first time, dropped when old.
+        assertEquals(gone, tombstones(mapOf("b" to setOf("1")), mapOf("b" to setOf("1")), gone, 60_000))
+        assertEquals(emptyMap<String, Map<String, Long>>(), tombstones(emptyMap(), mapOf("b" to setOf("1")), gone, 50_000 + 91L * 86_400_000))
+        val j = JSONObject(NotesJson.book(book, listOf(n(1, "a", 5_000)), gone["b"]!!))
+        val d = j.getJSONArray("books").getJSONObject(0).getJSONArray("deletedNotes").getJSONObject(0)
+        assertEquals("2", d.getString("id"))
+        assertEquals("1970-01-01T00:00:50Z", d.getString("deletedAt"))
+    }
+
+    @Test
+    fun `book files go up, come down, and removals are respected`() {
+        val a = book.copy(id = 1, filePath = "/b/a.epub")
+        val p = book.copy(id = 2, filePath = "/b/p.epub", isPrivate = true)
+        val first = planBooks(listOf(a, p), includePrivate = false, remoteNames = setOf("x.epub", "x.json"), uploaded = emptySet(), goneElsewhere = emptySet())
+        assertEquals(listOf("a"), first.upload.map { NotesJson.bookId(it) })
+        assertEquals(listOf("x"), first.download)
+        // a was sent; now it's gone from the server: removed on another phone.
+        val later = planBooks(listOf(a), false, setOf("x.json"), uploaded = setOf("a", "x"), goneElsewhere = emptySet())
+        assertEquals(listOf("a"), later.goneElsewhere)
+        assertEquals(emptyList<Book>(), later.upload)
+        // Removed here: its copy there goes too.
+        val removed = planBooks(emptyList(), false, setOf("a.epub", "a.json"), uploaded = setOf("a"), goneElsewhere = emptySet())
+        assertEquals(listOf("a"), removed.removeRemote)
+        assertEquals(emptyList<String>(), removed.download)
+    }
+
+    @Test
+    fun `a WebDAV listing reads as file names and etags`() {
+        val xml = """<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">
+            <d:response><d:href>/remote.php/dav/files/u/Reed/home/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>
+            <d:response><d:href>/remote.php/dav/files/u/Reed/home/zb%20uuid.json</d:href><d:propstat><d:prop><d:resourcetype/><d:getetag>"e1"</d:getetag></d:prop></d:propstat></d:response>
+            <d:response><d:href>/remote.php/dav/files/u/Reed/home/sub/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>
+            </d:multistatus>"""
+        assertEquals(mapOf("zb uuid.json" to "e1"), parseListing(xml, "/remote.php/dav/files/u/Reed/home/"))
+    }
+
+    @Test
+    fun `listing, reading and files against a real WebDAV server`() = runBlocking {
+        val server = System.getenv("REED_TEST_WEBDAV")
+        org.junit.Assume.assumeTrue(server != null)
+        val dav = Dav(server!!, "u", "testpass")
+        val dir = "reed-e2e-${System.nanoTime()}/Reed/books"
+        assertEquals(emptyMap<String, String>(), dav.list(dir))
+        val f = java.io.File.createTempFile("book", ".epub").apply { writeBytes(ByteArray(300_000) { (it % 251).toByte() }) }
+        dav.putFile("$dir/a.epub", f)
+        dav.put("$dir/a.json", "{}")
+        assertEquals(setOf("a.epub", "a.json"), dav.list(dir).keys)
+        assertEquals("{}", dav.getText("$dir/a.json"))
+        assertNull(dav.getText("$dir/missing.json"))
+        val back = java.io.File.createTempFile("back", ".epub")
+        dav.download("$dir/a.epub", back)
+        assertEquals(f.readBytes().toList(), back.readBytes().toList())
     }
 }
