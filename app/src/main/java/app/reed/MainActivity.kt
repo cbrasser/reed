@@ -33,6 +33,7 @@ import app.reed.reader.ReaderActivity
 import app.reed.ui.library.LibraryScreen
 import app.reed.ui.library.LibraryViewModel
 import app.reed.ui.notes.NotesScreen
+import app.reed.ui.sync.SyncScreen
 import app.reed.ui.theme.ReedTheme
 
 class MainActivity : FragmentActivity() {
@@ -62,7 +63,14 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
+                    var sendNotes by rememberSaveable { mutableStateOf(false) }
                     BackHandler(enabled = notesBookId != null) { notesBookId = null }
+                    BackHandler(enabled = sendNotes) { sendNotes = false }
+
+                    if (sendNotes) {
+                        SyncScreen(onBack = { sendNotes = false })
+                        return@Surface
+                    }
 
                     AnimatedContent(
                         targetState = notesBookId,
@@ -80,6 +88,7 @@ class MainActivity : FragmentActivity() {
                                 onSort = { libraryModel.setSort(it) },
                                 onUnlock = { unlock() },
                                 onLock = libraryModel::lockPrivate,
+                                onSendNotes = { sendNotes = true },
                                 onSetPrivate = { book, private -> libraryModel.setPrivate(book, private) },
                                 onRemove = { libraryModel.remove(it) },
                                 canMakePrivate = canMakePrivate,

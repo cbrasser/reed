@@ -24,6 +24,9 @@ interface BookDao {
     @Query("SELECT * FROM books WHERE id = :id")
     suspend fun get(id: Long): Book?
 
+    @Query("SELECT * FROM books")
+    suspend fun all(): List<Book>
+
     @Query("SELECT * FROM books WHERE id = :id")
     fun observe(id: Long): Flow<Book?>
 
@@ -53,6 +56,9 @@ interface NoteDao {
 
     @Query("SELECT * FROM notes WHERE id = :id")
     suspend fun get(id: Long): Note?
+
+    @Query("SELECT * FROM notes WHERE bookId = :bookId")
+    suspend fun forBook(bookId: Long): List<Note>
 
     @Insert
     suspend fun insert(note: Note): Long

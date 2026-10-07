@@ -18,6 +18,7 @@ Personal Android e-reader app. MVP is built (library, reader, passage/page notes
 - Dictation: `SpeechRecognizer` service first (placeholder services such as FUTO's TEST-category `DummyService` are ignored), falling back to an app's `RECOGNIZE_SPEECH` screen (FUTO Voice Input on GrapheneOS), with a 3 s watchdog.
 - `reader/`: `ReaderActivity` hosts the Readium navigator fragment under a Compose overlay; `Pencil.kt` holds the custom decoration templates (margin stroke + underline) and EPUB preferences; `Dictation.kt` wraps `SpeechRecognizer`.
 - `ui/`: theme (palette, Schibsted Grotesk), shared `MarginTick`/`NotesList`, library and notes screens.
+- `sync/`: optional sending of notes to the user's Nextcloud for the home app. `NotesJson` (reed-notes v1, deterministic so unchanged books aren't resent), `NotesUpload` (send changed, remove gone), `Nextcloud.kt` (Login Flow v2, OkHttp WebDAV), `SyncStore` (DataStore + Keystore-sealed app password), `NotesSync` (WorkManager, scheduled from `Library` after note changes). Unit tests in `app/src/test`; `REED_TEST_WEBDAV=http://127.0.0.1:8765/` also runs one against a real WebDAV server (user `u`, password `testpass`).
 - `privacy/PrivacyLock.kt`: BiometricPrompt (biometric or device credential); relocks when the app goes to the background.
 - Readium's night mode forces `border-color` on every element; decorations must draw lines with backgrounds, not borders.
 
