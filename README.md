@@ -107,6 +107,10 @@ scripts/release.sh 0.2.0
 
 Tags `v0.2.0`, builds a signed APK, checks the signature, pushes the tag and publishes a GitHub release that Obtainium picks up. The version name comes from the tag and the version code from the commit count. The signing key stays on the maintainer's machine.
 
+## License
+
+Reed is free software under the [GNU General Public License v3.0](LICENSE): you can use, study, share and modify it, and versions you distribute must stay under the same licence.
+
 ## Credits
 
 Book covers and text in the screenshots are public-domain editions from [Project Gutenberg](https://www.gutenberg.org/). Bundled fonts (Schibsted Grotesk, Literata, Source Serif 4, Atkinson Hyperlegible Next) are under the SIL Open Font License; their licences are in `app/src/main/assets/fonts/`.
