@@ -9,7 +9,7 @@ Personal Android e-reader app. MVP is built (library, reader, passage/page notes
 - AGP 9 (built-in Kotlin), compileSdk 37 (Readium 3.4 requires it), minSdk 30, core library desugaring on.
 - Test books can be added without the file picker: push to `/sdcard/Download`, rescan MediaStore, then `adb shell am start -a android.intent.action.VIEW -d content://media/external/file/<id> -t application/epub+zip --grant-read-uri-permission -n app.reed/.MainActivity`.
 - Signing: debug and release builds both use the personal key `~/.android/reed-release.jks`; its credentials live in `~/.gradle/gradle.properties` (`REED_KEYSTORE_*`, `REED_KEY_*`), never in the repo. Without them the build falls back to the default debug key, and installing over a key-signed app then fails unless the app is uninstalled, which deletes all notes. Back up the keystore and that properties file together.
-- Release build: `./gradlew :app:assembleRelease` (R8-shrunk, ~29 MB; smoke-tested on the emulator).
+- Release build: `./gradlew :app:assembleRelease` (R8-shrunk, ~29 MB; smoke-tested on the emulator). Publish with `scripts/release.sh X.Y.Z`; users install and update through Obtainium from GitHub releases. versionName comes from the latest `vX.Y.Z` tag, versionCode from `git rev-list --count HEAD`.
 - The default emulator image has no speech recognizer and no screen lock, so dictation and private-book unlock only show their error/disabled states there; test them on a real phone.
 
 ## Code map

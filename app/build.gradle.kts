@@ -5,6 +5,11 @@ plugins {
     alias(libs.plugins.kotlin.parcelize)
 }
 
+fun gitOutput(vararg args: String): String? = providers.exec {
+    commandLine("git", *args)
+    isIgnoreExitValue = true
+}.standardOutput.asText.get().trim().ifEmpty { null }
+
 android {
     namespace = "app.reed"
     compileSdk { version = release(37) }
@@ -13,8 +18,10 @@ android {
         applicationId = "app.reed"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        // Versions come from git: the latest vX.Y.Z tag names the release (Obtainium compares it
+        // with the installed versionName), the commit count keeps versionCode increasing.
+        versionCode = gitOutput("rev-list", "--count", "HEAD")?.toIntOrNull() ?: 1
+        versionName = gitOutput("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*")?.removePrefix("v") ?: "0.1.0"
     }
 
     // Personal key, kept outside the repo. Credentials live in ~/.gradle/gradle.properties
