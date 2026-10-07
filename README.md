@@ -54,6 +54,11 @@ Your own words are always set in graphite, the book's in ink, so you can tell th
 - Hide a book and its notes from the library, search and Reading now.
 - Unlock with fingerprint or your screen lock; everything locks again when you leave the app, and private screens stay blank in recent apps.
 
+**Notes on your Nextcloud (optional)**
+- Off until you turn it on: library menu › Send notes to Nextcloud. You sign in on your Nextcloud's own page; Reed never sees your password.
+- Each book's notes land in one folder there as a small JSON file, shortly after you write them. Private books stay on the phone unless you include them.
+- Made for the [home](https://github.com/cbrasser/home) desktop app, which files each book as a Markdown note.
+
 <table>
   <tr>
     <td width="33%"><img src="docs/screenshots/notes.webp" alt="Notes list grouped by chapter, each passage over its note"></td>

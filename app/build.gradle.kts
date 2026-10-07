@@ -100,6 +100,11 @@ dependencies {
     implementation(libs.datastore.preferences)
     implementation(libs.coil.compose)
     implementation(libs.timber)
+    implementation(libs.okhttp)
+    implementation(libs.work.runtime)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.json)
 
     implementation(libs.readium.shared)
     implementation(libs.readium.streamer)

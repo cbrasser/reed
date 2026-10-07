@@ -31,7 +31,7 @@ Existing readers were evaluated and rejected (ReadEra, Moon+ Reader, KOReader, G
 
 - Phone only, one-handed reading is the realistic posture; reading happens in varied light, including at night.
 - Books and notes are bilingual (English and German). Dictation must switch recognizer language quickly; note language often follows the book's language but not always.
-- Notes are casual-to-considered reactions on mixed reading; they stay inside Reed. No export required.
+- Notes are casual-to-considered reactions on mixed reading. They stay inside Reed unless the user turns on sending them to their Nextcloud (below).
 
 ## Capabilities and Constraints
 
@@ -41,7 +41,7 @@ Existing readers were evaluated and rejected (ReadEra, Moon+ Reader, KOReader, G
 - Notes entered by voice (speech-to-text) or typing, in English or German.
 - Notes browsable per book, showing selected passage and note together; tapping jumps to the location.
 - Private books: a book can be marked private. Private books and their notes are hidden everywhere (library, Reading now, search) until the user authenticates with biometrics or the device PIN/pattern; they re-lock when the app leaves the foreground.
-- Local-only storage; no accounts or sync.
+- Local-first storage. One optional connection: **Send notes to Nextcloud** (library menu). Off by default; signing in happens on the Nextcloud's own page (Login Flow v2, an app password Reed seals with an Android Keystore key). Reed then writes each book's notes as `<folder>/notes/<book id>.json` (the home app's reed-notes v1 format) shortly after notes change, and removes a book's file when the book leaves Reed. Private books are not sent unless the user switches that on. The home app on the user's computer reads that folder and files each book under `Books/`. Reading itself never needs the network.
 - UI language: English (books, notes, and dictation stay bilingual).
 - Material You / Dynamic Color: off; Reed uses its own fixed palette.
 - PDF: passage notes may be limited by Readium's PDF navigator; page-level notes are an acceptable fallback.

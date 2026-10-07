@@ -30,7 +30,12 @@ sealed interface ImportResult {
 enum class ImportFailure { KINDLE_FORMAT, UNSUPPORTED, PROTECTED, DAMAGED, UNREADABLE }
 
 /** Everything Reed knows about books and notes, plus Readium plumbing to open them. */
-class Library(private val context: Context, private val db: ReedDatabase) {
+class Library(
+    private val context: Context,
+    private val db: ReedDatabase,
+    /** Called after notes or a book's privacy change, so they can be sent on. */
+    private val onNotesChanged: () -> Unit = {},
+) {
 
     private val httpClient = DefaultHttpClient()
     private val assetRetriever = AssetRetriever(context.contentResolver, httpClient)
@@ -153,9 +158,18 @@ class Library(private val context: Context, private val db: ReedDatabase) {
         db.books().delete(book)
         File(book.filePath).delete()
         book.coverPath?.let { File(it).delete() }
+        onNotesChanged()
     }
 
-    suspend fun setPrivate(bookId: Long, isPrivate: Boolean) = db.books().setPrivate(bookId, isPrivate)
+    suspend fun setPrivate(bookId: Long, isPrivate: Boolean) {
+        db.books().setPrivate(bookId, isPrivate)
+        onNotesChanged()
+    }
+
+    /** Every book with its notes, for sending them to the user's server. */
+    suspend fun everything(): List<Pair<Book, List<Note>>> = withContext(Dispatchers.IO) {
+        db.books().all().map { it to db.notes().forBook(it.id) }
+    }
 
     suspend fun markOpened(bookId: Long) = db.books().markOpened(bookId, System.currentTimeMillis())
 
@@ -169,11 +183,11 @@ class Library(private val context: Context, private val db: ReedDatabase) {
 
     suspend fun note(id: Long): Note? = db.notes().get(id)
 
-    suspend fun addNote(note: Note): Long = db.notes().insert(note)
+    suspend fun addNote(note: Note): Long = db.notes().insert(note).also { onNotesChanged() }
 
-    suspend fun updateNote(note: Note) = db.notes().update(note)
+    suspend fun updateNote(note: Note) = db.notes().update(note).also { onNotesChanged() }
 
-    suspend fun deleteNote(note: Note) = db.notes().delete(note)
+    suspend fun deleteNote(note: Note) = db.notes().delete(note).also { onNotesChanged() }
 
     private fun saveCover(id: String, bitmap: Bitmap): String? = runCatching {
         val file = File(coversDir, "$id.jpg")

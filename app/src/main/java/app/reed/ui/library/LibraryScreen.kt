@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.MoreVert
@@ -96,6 +97,7 @@ fun LibraryScreen(
     onSort: (LibrarySort) -> Unit,
     onUnlock: () -> Unit,
     onLock: () -> Unit,
+    onSendNotes: () -> Unit,
     onSetPrivate: (BookWithCount, Boolean) -> Unit,
     onRemove: (BookWithCount) -> Unit,
     canMakePrivate: Boolean,
@@ -150,6 +152,7 @@ fun LibraryScreen(
                     onSort = onSort,
                     onUnlock = onUnlock,
                     onLock = onLock,
+                    onSendNotes = onSendNotes,
                     showLibraryActions = !isEmpty,
                 )
             }
@@ -274,6 +277,7 @@ private fun LibraryTopBar(
     onSort: (LibrarySort) -> Unit,
     onUnlock: () -> Unit,
     onLock: () -> Unit,
+    onSendNotes: () -> Unit,
     showLibraryActions: Boolean,
 ) {
     var sortOpen by remember { mutableStateOf(false) }
@@ -330,6 +334,14 @@ private fun LibraryTopBar(
                             },
                         )
                     }
+                    DropdownMenuItem(
+                        text = { Text("Send notes to Nextcloud") },
+                        leadingIcon = { Icon(Icons.Outlined.CloudUpload, contentDescription = null) },
+                        onClick = {
+                            menuOpen = false
+                            onSendNotes()
+                        },
+                    )
                 }
             }
         },
