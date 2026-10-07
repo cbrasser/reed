@@ -28,6 +28,7 @@ class ReedApp : Application() {
         settings = SettingsStore(this)
         // Catch up on anything that didn't get sent last time (does nothing when sending is off).
         NotesSync.schedule(this, delaySeconds = 5)
+        NotesSync.scheduleRegular(this)
         privacyLock.install()
     }
 }

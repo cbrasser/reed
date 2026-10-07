@@ -28,6 +28,9 @@ data class SyncSettings(
     val enabled: Boolean = false,
     val folder: String = DEFAULT_FOLDER,
     val includePrivate: Boolean = false,
+    /** Also keep the book files themselves on Nextcloud, and fetch books this phone doesn't have. */
+    val syncBooks: Boolean = false,
+    val bookFileCount: Int = 0,
     val lastSentAt: Long? = null,
     val lastError: String? = null,
     val bookCount: Int = 0,
@@ -49,6 +52,12 @@ class SyncStore(private val context: Context) {
         val lastSentAt = longPreferencesKey("lastSentAt")
         val lastError = stringPreferencesKey("lastError")
         val sent = stringPreferencesKey("sent")
+        val sentIds = stringPreferencesKey("sentNoteIds")
+        val tombstones = stringPreferencesKey("tombstones")
+        val homeEtags = stringPreferencesKey("homeEtags")
+        val syncBooks = booleanPreferencesKey("syncBooks")
+        val uploaded = stringPreferencesKey("uploadedBooks")
+        val goneElsewhere = stringPreferencesKey("goneElsewhere")
     }
 
     val settings: Flow<SyncSettings> = context.syncStore.data.map { p ->
@@ -63,6 +72,8 @@ class SyncStore(private val context: Context) {
             lastSentAt = p[Keys.lastSentAt],
             lastError = p[Keys.lastError],
             bookCount = p[Keys.sent]?.let { runCatching { JSONObject(it).length() }.getOrNull() } ?: 0,
+            syncBooks = p[Keys.syncBooks] ?: false,
+            bookFileCount = p[Keys.uploaded]?.let { runCatching { org.json.JSONArray(it).length() }.getOrNull() } ?: 0,
         )
     }
 
@@ -77,8 +88,8 @@ class SyncStore(private val context: Context) {
             it[Keys.password] = sealed
             it[Keys.enabled] = true
             it.remove(Keys.lastError)
-            it.remove(Keys.sent)
             it.remove(Keys.lastSentAt)
+            listOf(Keys.sent, Keys.sentIds, Keys.tombstones, Keys.homeEtags, Keys.uploaded, Keys.goneElsewhere).forEach { k -> it.remove(k) }
         }
     }
 
@@ -98,12 +109,53 @@ class SyncStore(private val context: Context) {
 
     suspend fun setIncludePrivate(on: Boolean) = context.syncStore.edit { it[Keys.includePrivate] = on }
 
+    suspend fun setSyncBooks(on: Boolean) = context.syncStore.edit { it[Keys.syncBooks] = on }
+
+    // ---- bookkeeping for two-way notes and book files ----
+
+    private suspend fun raw(key: androidx.datastore.preferences.core.Preferences.Key<String>) = context.syncStore.data.first()[key]
+
+    private fun obj(s: String?) = runCatching { JSONObject(s ?: "{}") }.getOrDefault(JSONObject())
+    private fun set(s: String?): Set<String> = runCatching {
+        val a = org.json.JSONArray(s ?: "[]")
+        (0 until a.length()).map { a.getString(it) }.toSet()
+    }.getOrDefault(emptySet())
+
+    suspend fun sentIds(): Map<String, Set<String>> {
+        val j = obj(raw(Keys.sentIds))
+        return j.keys().asSequence().associateWith { k -> j.getJSONArray(k).let { a -> (0 until a.length()).map { a.getString(it) }.toSet() } }
+    }
+
+    suspend fun tombstones(): Map<String, Map<String, Long>> {
+        val j = obj(raw(Keys.tombstones))
+        return j.keys().asSequence().associateWith { k -> j.getJSONObject(k).let { o -> o.keys().asSequence().associateWith { o.getLong(it) } } }
+    }
+
+    suspend fun recordNotes(sentIds: Map<String, Set<String>>, tombstones: Map<String, Map<String, Long>>) = context.syncStore.edit {
+        it[Keys.sentIds] = JSONObject(sentIds.mapValues { (_, v) -> org.json.JSONArray(v.toList()) }).toString()
+        it[Keys.tombstones] = JSONObject(tombstones.mapValues { (_, v) -> JSONObject(v) }).toString()
+    }
+
+    suspend fun homeEtags(): Map<String, String> = obj(raw(Keys.homeEtags)).let { j -> j.keys().asSequence().associateWith { j.getString(it) } }
+
+    suspend fun recordHomeEtag(file: String, etag: String) = context.syncStore.edit {
+        it[Keys.homeEtags] = obj(it[Keys.homeEtags]).put(file, etag).toString()
+    }
+
+    suspend fun uploaded(): Set<String> = set(raw(Keys.uploaded))
+    suspend fun goneElsewhere(): Set<String> = set(raw(Keys.goneElsewhere))
+
+    suspend fun recordBooks(uploaded: Set<String>, goneElsewhere: Set<String>) = context.syncStore.edit {
+        it[Keys.uploaded] = org.json.JSONArray(uploaded.toList()).toString()
+        it[Keys.goneElsewhere] = org.json.JSONArray(goneElsewhere.toList()).toString()
+    }
+
     /** A new folder starts fresh: everything is sent there again. */
     suspend fun setFolder(folder: String) = context.syncStore.edit {
         val f = folder.trim().trim('/').ifEmpty { DEFAULT_FOLDER }
         if (f != it[Keys.folder]) {
             it[Keys.folder] = f
-            it.remove(Keys.sent)
+            listOf(Keys.sent, Keys.sentIds, Keys.tombstones, Keys.homeEtags, Keys.uploaded, Keys.goneElsewhere).forEach { k -> it.remove(k) }
         }
     }
 

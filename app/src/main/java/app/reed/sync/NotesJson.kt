@@ -22,8 +22,8 @@ object NotesJson {
      * "now", so the same notes always give the same file and unchanged books
      * aren't sent again.
      */
-    fun book(book: Book, notes: List<Note>): String {
-        val changed = notes.maxOfOrNull { it.updatedAt } ?: book.addedAt
+    fun book(book: Book, notes: List<Note>, deleted: Map<String, Long> = emptyMap()): String {
+        val changed = maxOf(notes.maxOfOrNull { it.updatedAt } ?: book.addedAt, deleted.values.maxOrNull() ?: 0)
         return buildString {
             append("{\n")
             append("  \"format\": \"reed-notes\",\n")
@@ -51,8 +51,17 @@ object NotesJson {
                 append("\"locator\": ").append(str(n.locator))
                 append("}")
             }
-            append(if (notes.isEmpty()) "]\n" else "\n    ]\n")
-            append("  }]\n")
+            append(if (notes.isEmpty()) "]" else "\n    ]")
+            if (deleted.isNotEmpty()) {
+                // Notes deleted here after they were sent, so home can delete them too.
+                append(",\n    \"deletedNotes\": [")
+                deleted.entries.sortedBy { it.key }.forEachIndexed { i, (id, at) ->
+                    append(if (i == 0) "\n" else ",\n")
+                    append("      {\"id\": ").append(str(id)).append(", \"deletedAt\": ").append(str(iso(at))).append("}")
+                }
+                append("\n    ]")
+            }
+            append("\n  }]\n")
             append("}\n")
         }
     }

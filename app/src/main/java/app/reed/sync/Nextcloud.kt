@@ -9,6 +9,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.json.JSONObject
@@ -115,6 +116,10 @@ interface RemoteFolder {
     suspend fun mkdirs(path: String)
     suspend fun put(path: String, body: String)
     suspend fun delete(path: String)
+    /** Files directly in a folder: name → ETag. Empty when the folder isn't there. */
+    suspend fun list(dir: String): Map<String, String>
+    /** A text file, or null when it isn't there. */
+    suspend fun getText(path: String): String?
 }
 
 /** The few WebDAV calls Reed needs, inside one folder the user chose. */
@@ -165,10 +170,69 @@ class Dav(root: String, user: String, password: String, private val client: OkHt
         res.check("Sending $path").close()
     }
 
+    override suspend fun list(dir: String): Map<String, String> = withContext(Dispatchers.IO) {
+        val u = url(dir).newBuilder().addPathSegment("").build()
+        val body = """<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getetag/></d:prop></d:propfind>"""
+            .toRequestBody("application/xml; charset=utf-8".toMediaType())
+        client.newCall(request(u).header("Depth", "1").method("PROPFIND", body).build()).execute().use { res ->
+            if (res.code == 404) return@withContext emptyMap()
+            res.check("Listing $dir")
+            parseListing(res.body.string(), u.encodedPath)
+        }
+    }
+
+    override suspend fun getText(path: String): String? = withContext(Dispatchers.IO) {
+        client.newCall(request(url(path)).build()).execute().use { res ->
+            if (res.code == 404) return@withContext null
+            res.check("Reading $path")
+            res.body.string()
+        }
+    }
+
+    /** Send a book file, streaming it. */
+    suspend fun putFile(path: String, file: java.io.File) = withContext(Dispatchers.IO) {
+        val type = "application/octet-stream".toMediaType()
+        fun call() = client.newCall(request(url(path)).put(file.asRequestBody(type)).build()).execute()
+        var res = call()
+        if (res.code == 409 || res.code == 404) {
+            res.close()
+            mkdirs(path.substringBeforeLast('/', ""))
+            res = call()
+        }
+        res.check("Sending $path").close()
+    }
+
+    /** Fetch a file to `to`, streaming it. */
+    suspend fun download(path: String, to: java.io.File) = withContext(Dispatchers.IO) {
+        client.newCall(request(url(path)).build()).execute().use { res ->
+            res.check("Fetching $path")
+            to.outputStream().use { out -> res.body.byteStream().copyTo(out) }
+        }
+    }
+
     override suspend fun delete(path: String) = withContext(Dispatchers.IO) {
         client.newCall(request(url(path)).delete().build()).execute().use { res ->
             if (res.code == 404) return@use
             res.check("Removing $path")
         }
     }
+}
+
+/** File names and ETags from a PROPFIND (Depth 1) answer; the folder itself and subfolders are left out. */
+fun parseListing(xml: String, folderPath: String): Map<String, String> {
+    val f = javax.xml.parsers.DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
+    val doc = f.newDocumentBuilder().parse(org.xml.sax.InputSource(java.io.StringReader(xml)))
+    val dav = "DAV:"
+    val out = mutableMapOf<String, String>()
+    val responses = doc.getElementsByTagNameNS(dav, "response")
+    for (i in 0 until responses.length) {
+        val r = responses.item(i) as org.w3c.dom.Element
+        val href = r.getElementsByTagNameNS(dav, "href").item(0)?.textContent?.trim() ?: continue
+        val path = java.net.URI(if (href.startsWith("http")) href else "http://x$href").path
+        if (path.trimEnd('/') == java.net.URI("http://x$folderPath").path.trimEnd('/')) continue
+        if (r.getElementsByTagNameNS(dav, "collection").length > 0) continue
+        val etag = r.getElementsByTagNameNS(dav, "getetag").item(0)?.textContent?.trim()?.removePrefix("W/")?.trim('"') ?: ""
+        out[path.trimEnd('/').substringAfterLast('/')] = etag
+    }
+    return out
 }

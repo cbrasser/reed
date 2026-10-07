@@ -31,7 +31,7 @@ Existing readers were evaluated and rejected (ReadEra, Moon+ Reader, KOReader, G
 
 - Phone only, one-handed reading is the realistic posture; reading happens in varied light, including at night.
 - Books and notes are bilingual (English and German). Dictation must switch recognizer language quickly; note language often follows the book's language but not always.
-- Notes are casual-to-considered reactions on mixed reading. They stay inside Reed unless the user turns on sending them to their Nextcloud (below).
+- Notes are casual-to-considered reactions on mixed reading. They stay inside Reed unless the user turns on keeping them in step with the home app through their Nextcloud (below).
 
 ## Capabilities and Constraints
 
@@ -41,7 +41,10 @@ Existing readers were evaluated and rejected (ReadEra, Moon+ Reader, KOReader, G
 - Notes entered by voice (speech-to-text) or typing, in English or German.
 - Notes browsable per book, showing selected passage and note together; tapping jumps to the location.
 - Private books: a book can be marked private. Private books and their notes are hidden everywhere (library, Reading now, search) until the user authenticates with biometrics or the device PIN/pattern; they re-lock when the app leaves the foreground.
-- Local-first storage. One optional connection: **Send notes to Nextcloud** (library menu). Off by default; signing in happens on the Nextcloud's own page (Login Flow v2, an app password Reed seals with an Android Keystore key). Reed then writes each book's notes as `<folder>/notes/<book id>.json` (the home app's reed-notes v1 format) shortly after notes change, and removes a book's file when the book leaves Reed. Private books are not sent unless the user switches that on. The home app on the user's computer reads that folder and files each book under `Books/`. Reading itself never needs the network.
+- Local-first storage. One optional connection: **Send notes to Nextcloud** (library menu). Off by default; signing in happens on the Nextcloud's own page (Login Flow v2, an app password Reed seals with an Android Keystore key). Reading itself never needs the network.
+  - **Notes, both ways with the home app** (format: home's `docs/reed-format.md`). Reed writes each book's notes as `<folder>/notes/<book id>.json` shortly after notes change, including notes deleted since the last send (`deletedNotes`), and removes a book's file when the book leaves Reed. The home app files each book under `Books/` and writes edits and deletions made there to `<folder>/home/<book id>.json`; Reed applies the ones newer than its own copy. Notes are only created in Reed. Private books stay on the phone unless the user includes them.
+  - **Book files (optional, off by default):** each book goes to `<folder>/books/<book id>.<epub|pdf>` with a small `<book id>.json` card, and books there that this phone doesn't have are fetched (keeping their id, so their notes line up). Removing a book here removes its copy there; a book removed on another phone stays here but isn't sent again.
+  - Runs a moment after notes change, at app start, and hourly in the background, whenever the phone is online.
 - UI language: English (books, notes, and dictation stay bilingual).
 - Material You / Dynamic Color: off; Reed uses its own fixed palette.
 - PDF: passage notes may be limited by Readium's PDF navigator; page-level notes are an acceptable fallback.
