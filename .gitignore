@@ -1,0 +1,18 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+.impeccable/config.local.json
+
+# Signing keys never live in the repo (see CLAUDE.md)
+*.jks
+*.keystore
+
+# Design-review scratch output (screenshots, decision pages)
+.impeccable/review/
+.impeccable/questions/
+.impeccable/mocks/
+.impeccable/build/

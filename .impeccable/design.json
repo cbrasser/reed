@@ -1,0 +1,751 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-07T10:46:08Z",
+  "title": "Design System: Reed",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(98.5% 0.003 106.4)",
+        "tonalRamp": [
+          "#1A1A1A",
+          "#2E3033",
+          "#DCDCDA",
+          "#E3E3E1",
+          "#E9E9E7",
+          "#EFEFED",
+          "#F4F4F2",
+          "#FAFAF8"
+        ]
+      },
+      "ink": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "oklch(21.8% 0.000 89.9)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#A5A5A5",
+          "#C9C9C9",
+          "#EEEEEE"
+        ]
+      },
+      "graphite": {
+        "role": "secondary",
+        "displayName": "Graphite",
+        "canonical": "oklch(49.5% 0.011 258.4)",
+        "tonalRamp": [
+          "#080B10",
+          "#22252A",
+          "#3E4248",
+          "#5D6167",
+          "#7E8389",
+          "#A1A5AC",
+          "#C5C9D0",
+          "#EAEFF6"
+        ]
+      },
+      "graphite-light": {
+        "role": "secondary",
+        "displayName": "Light Graphite",
+        "canonical": "oklch(65.9% 0.010 258.3)",
+        "tonalRamp": [
+          "#090B0F",
+          "#22252A",
+          "#3F4247",
+          "#5E6167",
+          "#7F8388",
+          "#A1A5AB",
+          "#C5C9D0",
+          "#EAEFF5"
+        ]
+      },
+      "graphite-mid": {
+        "role": "secondary",
+        "displayName": "Mid Graphite",
+        "canonical": "oklch(61.2% 0.012 261.8)",
+        "tonalRamp": [
+          "#090B10",
+          "#22252B",
+          "#3F4248",
+          "#5E6168",
+          "#7E8289",
+          "#A1A5AC",
+          "#C5C9D1",
+          "#EAEFF6"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "canonical": "oklch(89.1% 0.005 258.3)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#242527",
+          "#404244",
+          "#606164",
+          "#818285",
+          "#A3A5A8",
+          "#C7C9CC",
+          "#ECEFF2"
+        ]
+      },
+      "pencil-yellow": {
+        "role": "tertiary",
+        "displayName": "Pencil Yellow",
+        "canonical": "oklch(83.4% 0.158 89.0)",
+        "tonalRamp": [
+          "#100A00",
+          "#2F2301",
+          "#523F02",
+          "#785D01",
+          "#A07D07",
+          "#CA9F06",
+          "#F3C331",
+          "#FFEDC1"
+        ]
+      },
+      "pencil-yellow-soft": {
+        "role": "tertiary",
+        "displayName": "Soft Pencil",
+        "canonical": "oklch(94.4% 0.070 95.0)",
+        "tonalRamp": [
+          "#0F0B00",
+          "#2D2400",
+          "#4E410D",
+          "#6E6130",
+          "#8F8251",
+          "#B2A573",
+          "#D7C996",
+          "#FDEFBA"
+        ]
+      },
+      "tonal-grey": {
+        "role": "neutral",
+        "displayName": "Tonal Grey",
+        "canonical": "oklch(92.7% 0.002 247.8)",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#242526",
+          "#414243",
+          "#606162",
+          "#818283",
+          "#A4A5A6",
+          "#C8C9CA",
+          "#EDEEEF"
+        ]
+      },
+      "on-tonal-grey": {
+        "role": "neutral",
+        "displayName": "On Tonal Grey",
+        "canonical": "oklch(30.0% 0.010 260.7)",
+        "tonalRamp": [
+          "#090B0F",
+          "#22252A",
+          "#3F4247",
+          "#5E6167",
+          "#7F8288",
+          "#A1A5AB",
+          "#C5C9D0",
+          "#EBEFF5"
+        ]
+      },
+      "surface-container-lowest": {
+        "role": "neutral",
+        "displayName": "Surface Container Lowest",
+        "canonical": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#1A1A1A",
+          "#2E3033",
+          "#DCDCDA",
+          "#E3E3E1",
+          "#E9E9E7",
+          "#EFEFED",
+          "#F4F4F2",
+          "#FAFAF8"
+        ]
+      },
+      "surface-container-low": {
+        "role": "neutral",
+        "displayName": "Surface Container Low",
+        "canonical": "oklch(96.7% 0.003 106.4)",
+        "tonalRamp": [
+          "#1A1A1A",
+          "#2E3033",
+          "#DCDCDA",
+          "#E3E3E1",
+          "#E9E9E7",
+          "#EFEFED",
+          "#F4F4F2",
+          "#FAFAF8"
+        ]
+      },
+      "surface-container": {
+        "role": "neutral",
+        "displayName": "Surface Container",
+        "canonical": "oklch(95.2% 0.003 106.4)",
+        "tonalRamp": [
+          "#1A1A1A",
+          "#2E3033",
+          "#DCDCDA",
+          "#E3E3E1",
+          "#E9E9E7",
+          "#EFEFED",
+          "#F4F4F2",
+          "#FAFAF8"
+        ]
+      },
+      "surface-container-high": {
+        "role": "neutral",
+        "displayName": "Surface Container High",
+        "canonical": "oklch(93.3% 0.003 106.5)",
+        "tonalRamp": [
+          "#1A1A1A",
+          "#2E3033",
+          "#DCDCDA",
+          "#E3E3E1",
+          "#E9E9E7",
+          "#EFEFED",
+          "#F4F4F2",
+          "#FAFAF8"
+        ]
+      },
+      "surface-container-highest": {
+        "role": "neutral",
+        "displayName": "Surface Container Highest",
+        "canonical": "oklch(91.5% 0.003 106.5)",
+        "tonalRamp": [
+          "#1A1A1A",
+          "#2E3033",
+          "#DCDCDA",
+          "#E3E3E1",
+          "#E9E9E7",
+          "#EFEFED",
+          "#F4F4F2",
+          "#FAFAF8"
+        ]
+      },
+      "surface-dim": {
+        "role": "neutral",
+        "displayName": "Surface Dim",
+        "canonical": "oklch(89.4% 0.003 106.5)",
+        "tonalRamp": [
+          "#1A1A1A",
+          "#2E3033",
+          "#DCDCDA",
+          "#E3E3E1",
+          "#E9E9E7",
+          "#EFEFED",
+          "#F4F4F2",
+          "#FAFAF8"
+        ]
+      },
+      "inverse-surface": {
+        "role": "neutral",
+        "displayName": "Inverse Surface",
+        "canonical": "oklch(30.8% 0.006 258.4)",
+        "tonalRamp": [
+          "#0A0B0E",
+          "#232528",
+          "#404245",
+          "#5F6165",
+          "#808286",
+          "#A3A5A9",
+          "#C7C9CD",
+          "#ECEFF3"
+        ]
+      },
+      "error": {
+        "role": "error",
+        "displayName": "Error",
+        "canonical": "oklch(50.1% 0.178 28.7)",
+        "tonalRamp": [
+          "#1F0000",
+          "#4D0001",
+          "#810103",
+          "#B0221B",
+          "#D84C3F",
+          "#FF7464",
+          "#FFB3A8",
+          "#FFE9E5"
+        ]
+      },
+      "night-paper": {
+        "role": "neutral",
+        "displayName": "Night Paper",
+        "canonical": "oklch(19.5% 0.004 264.5)",
+        "tonalRamp": [
+          "#141517",
+          "#191A1C",
+          "#1D1E20",
+          "#212224",
+          "#262729",
+          "#2D2E32",
+          "#34363A",
+          "#6F7379"
+        ]
+      },
+      "night-ink": {
+        "role": "primary",
+        "displayName": "Warm Night Ink",
+        "canonical": "oklch(92.5% 0.007 88.6)",
+        "tonalRamp": [
+          "#0C0B08",
+          "#262521",
+          "#43423E",
+          "#63615D",
+          "#84827E",
+          "#A7A5A0",
+          "#CBC9C4",
+          "#F0EEE9"
+        ]
+      },
+      "night-graphite": {
+        "role": "secondary",
+        "displayName": "Night Graphite",
+        "canonical": "oklch(73.0% 0.010 258.3)",
+        "tonalRamp": [
+          "#090B0F",
+          "#22252A",
+          "#3F4247",
+          "#5E6167",
+          "#7F8388",
+          "#A1A5AB",
+          "#C5C9D0",
+          "#EAEFF5"
+        ]
+      },
+      "night-graphite-light": {
+        "role": "secondary",
+        "displayName": "Night Light Graphite",
+        "canonical": "oklch(55.4% 0.010 258.4)",
+        "tonalRamp": [
+          "#090B10",
+          "#22252A",
+          "#3F4248",
+          "#5E6167",
+          "#7E8389",
+          "#A1A5AC",
+          "#C5C9D0",
+          "#EAEFF6"
+        ]
+      },
+      "night-rule": {
+        "role": "neutral",
+        "displayName": "Night Rule",
+        "canonical": "oklch(33.2% 0.008 264.5)",
+        "tonalRamp": [
+          "#141517",
+          "#191A1C",
+          "#1D1E20",
+          "#212224",
+          "#262729",
+          "#2D2E32",
+          "#34363A",
+          "#6F7379"
+        ]
+      },
+      "night-tonal-grey": {
+        "role": "neutral",
+        "displayName": "Night Tonal Grey",
+        "canonical": "oklch(30.2% 0.007 274.7)",
+        "tonalRamp": [
+          "#141517",
+          "#191A1C",
+          "#1D1E20",
+          "#212224",
+          "#262729",
+          "#2D2E32",
+          "#34363A",
+          "#6F7379"
+        ]
+      },
+      "night-surface-container-low": {
+        "role": "neutral",
+        "displayName": "Night Surface Container Low",
+        "canonical": "oklch(21.8% 0.004 264.5)",
+        "tonalRamp": [
+          "#141517",
+          "#191A1C",
+          "#1D1E20",
+          "#212224",
+          "#262729",
+          "#2D2E32",
+          "#34363A",
+          "#6F7379"
+        ]
+      },
+      "night-pencil-container": {
+        "role": "tertiary",
+        "displayName": "Night Pencil Container",
+        "canonical": "oklch(36.1% 0.067 92.3)",
+        "tonalRamp": [
+          "#100B00",
+          "#2E2401",
+          "#4F4110",
+          "#6F6032",
+          "#918152",
+          "#B4A474",
+          "#D9C997",
+          "#FEEEBB"
+        ]
+      },
+      "night-error": {
+        "role": "error",
+        "displayName": "Night Error",
+        "canonical": "oklch(83.4% 0.068 22.0)",
+        "tonalRamp": [
+          "#1F0002",
+          "#401516",
+          "#613231",
+          "#845150",
+          "#A77270",
+          "#CC9592",
+          "#F2B8B5",
+          "#FEE9E7"
+        ]
+      },
+      "black-paper": {
+        "role": "neutral",
+        "displayName": "Black Paper",
+        "canonical": "oklch(0.0% 0.000 0.0)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#A5A5A5",
+          "#C9C9C9",
+          "#EEEEEE"
+        ]
+      },
+      "black-ink": {
+        "role": "primary",
+        "displayName": "Ash Ink",
+        "canonical": "oklch(83.0% 0.007 88.7)",
+        "tonalRamp": [
+          "#0C0B08",
+          "#262521",
+          "#43423E",
+          "#63615D",
+          "#84827D",
+          "#A7A5A0",
+          "#CBC9C4",
+          "#F0EEE9"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Reserved; not in daily use."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Empty-state statements."
+      },
+      "headline-small": {
+        "displayName": "Headline Small",
+        "purpose": "The \"Reed\" wordmark in the library top bar."
+      },
+      "title-large": {
+        "displayName": "Title Large",
+        "purpose": "Sheet titles (\"Notes\")."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Library section headers, book title in reader chrome, size readout."
+      },
+      "title-small": {
+        "displayName": "Title Small",
+        "purpose": "Book titles under covers."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Note bodies in lists (graphite), empty-state copy."
+      },
+      "body-medium": {
+        "displayName": "Body Medium",
+        "purpose": "Dictation status and partial transcript."
+      },
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "Author lines."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Buttons, setting names, chapter headers, reader position."
+      },
+      "label-medium": {
+        "displayName": "Label Medium",
+        "purpose": "Passage meta in the note sheet, chapter under title in chrome."
+      },
+      "label-small": {
+        "displayName": "Label Small",
+        "purpose": "Note dates and positions, progress percentages, cover note counts."
+      },
+      "note-entry": {
+        "displayName": "Note Entry",
+        "purpose": "The note text field, in graphite."
+      },
+      "passage": {
+        "displayName": "Passage",
+        "purpose": "Book passages quoted in the notes list, in the reader's book face, in ink."
+      },
+      "passage-sheet": {
+        "displayName": "Passage Sheet",
+        "purpose": "The passage at the top of the note sheet."
+      }
+    },
+    "shadows": [
+      {
+        "name": "cover-lift",
+        "value": "Compose Modifier.shadow(2.dp, RoundedCornerShape(3.dp), clip = false) ~ 0 1px 3px rgba(0,0,0,0.18)",
+        "purpose": "Book covers in the library grid; the only content that casts a shadow."
+      },
+      {
+        "name": "cover-lift-reading-now",
+        "value": "Modifier.shadow(3.dp, RoundedCornerShape(3.dp), clip = false) ~ 0 2px 5px rgba(0,0,0,0.2)",
+        "purpose": "Larger covers in the Reading now row."
+      },
+      {
+        "name": "settings-scrim",
+        "value": "rgba(0,0,0,0.12)",
+        "purpose": "Light scrim under the reading-settings sheet so live changes stay visible on the page."
+      },
+      {
+        "name": "mic-halo",
+        "value": "fill rgba(242,194,48,0.28) at radius x(1 + level*0.45); ring 1.5dp rgba(242,194,48,0.6) at radius x(1 + (halo-1)*1.6) + 4dp",
+        "purpose": "Voice-reactive halo around the listening mic."
+      }
+    ],
+    "motion": [
+      {
+        "name": "chrome-enter",
+        "value": "fadeIn tween(160) + slideIn tween(200), offset one third of height",
+        "purpose": "Reader top/bottom chrome appearing on centre tap."
+      },
+      {
+        "name": "chrome-exit",
+        "value": "fadeOut tween(140) + slideOut tween(160)",
+        "purpose": "Chrome leaving faster than it arrived."
+      },
+      {
+        "name": "mic-glyph-crossfade",
+        "value": "fadeIn/fadeOut tween(120)",
+        "purpose": "Mic to stop glyph swap."
+      },
+      {
+        "name": "mic-ring",
+        "value": "alpha tween(180)",
+        "purpose": "Halo fading in and out with listening state."
+      },
+      {
+        "name": "mic-halo-spring",
+        "value": "spring(dampingRatio = 0.7, stiffness = 400)",
+        "purpose": "Halo following voice level."
+      },
+      {
+        "name": "passage-expand",
+        "value": "animateContentSize tween(200)",
+        "purpose": "Expanding the quoted passage in the note sheet."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "single portrait layout; library grid is GridCells.Adaptive(minSize = 104dp)"
+      }
+    ],
+    "implementation": {
+      "platform": "Android, Jetpack Compose + Material 3, Dynamic Color off",
+      "units": "Frontmatter dimensions are Compose dp/sp; component CSS snippets use px at 1:1 for preview only.",
+      "sources": {
+        "palette": "app/src/main/java/app/reed/ui/theme/Theme.kt (Palette, LightScheme, darkScheme, MarginColors, selectedLine, reedSegmentedColors)",
+        "type": "app/src/main/java/app/reed/ui/theme/Type.kt (ReedTypography, ReedShapes, passageStyle)",
+        "tick": "app/src/main/java/app/reed/ui/components/MarginTick.kt",
+        "readium": "app/src/main/java/app/reed/reader/Pencil.kt (PencilLine, PencilMark, pencilSelection, toEpubPreferences)",
+        "platformTheme": "app/src/main/res/values/themes.xml, colors.xml"
+      },
+      "readiumNightBorders": "Readium night mode forces border-color on every element; draw decoration lines with linear-gradient backgrounds or pseudo-element fills, never borders.",
+      "readerSelection": "Text selection in the book is graphite-light at 35% alpha (0x598E9298); selection handles use graphite-mid (#80848B) via Theme.Reed.Reader."
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ink pill for the one primary action on a screen (Save, Add book).",
+      "html": "<button class=\"ds-btn-primary\">Save</button>",
+      "css": ".ds-btn-primary{font-family:'Schibsted Grotesk',system-ui,sans-serif;background:#1A1A1A;color:#FAFAF8;border:none;border-radius:9999px;height:40px;padding:8px 24px;font-size:14px;font-weight:500;line-height:20px;letter-spacing:0.005em;cursor:pointer;transition:background .15s}.ds-btn-primary:hover{background:#2E3033}.ds-btn-primary:focus-visible{outline:2px solid #1A1A1A;outline-offset:3px}.ds-btn-primary:active{background:#000}"
+    },
+    {
+      "name": "Tonal Button",
+      "kind": "button",
+      "refersTo": "button-tonal",
+      "description": "Quiet secondary action in tonal grey (Note page, size steppers).",
+      "html": "<button class=\"ds-btn-tonal\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M3 10h11v2H3zm0-4h11v2H3zm0 8h7v2H3zm17.59-2.07.71-.71a1 1 0 0 0 0-1.41l-.71-.71a1 1 0 0 0-1.41 0l-.71.71zm-.71.71-5.3 5.3V20h2.06l5.3-5.3z\"/></svg>Note page</button>",
+      "css": ".ds-btn-tonal{font-family:'Schibsted Grotesk',system-ui,sans-serif;display:inline-flex;align-items:center;gap:8px;background:#E6E7E8;color:#2B2E33;border:none;border-radius:9999px;height:40px;padding:8px 24px 8px 16px;font-size:14px;font-weight:500;cursor:pointer;transition:background .15s}.ds-btn-tonal:hover{background:#DCDCDA}.ds-btn-tonal:focus-visible{outline:2px solid #1A1A1A;outline-offset:3px}"
+    },
+    {
+      "name": "Dictation Mic",
+      "kind": "custom",
+      "refersTo": "mic-rest",
+      "description": "The only pencil-yellow element: soft at rest, full yellow with a voice halo while listening.",
+      "html": "<div class=\"ds-mic-row\"><button class=\"ds-mic\" aria-label=\"Dictate in English\"><svg width=\"30\" height=\"30\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z\"/></svg></button><button class=\"ds-mic ds-mic--listening\" aria-label=\"Stop dictation\"><svg width=\"30\" height=\"30\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M16 8v8H8V8h8m2-2H6v12h12V6z\"/></svg></button></div>",
+      "css": ".ds-mic-row{display:flex;gap:40px;align-items:center;padding:16px}.ds-mic{width:68px;height:68px;border-radius:50%;border:none;background:#FBEDB8;color:#1A1A1A;display:grid;place-items:center;cursor:pointer;position:relative;transition:background .18s}.ds-mic:hover{background:#F7E39A}.ds-mic:focus-visible{outline:2px solid #1A1A1A;outline-offset:4px}.ds-mic--listening{background:#F2C230;box-shadow:0 0 0 8px rgba(242,194,48,.28),0 0 0 12px rgba(242,194,48,0),0 0 0 13.5px rgba(242,194,48,.6);animation:ds-breathe 1.2s ease-in-out infinite}@keyframes ds-breathe{50%{box-shadow:0 0 0 14px rgba(242,194,48,.28),0 0 0 20px rgba(242,194,48,0),0 0 0 21.5px rgba(242,194,48,.6)}}"
+    },
+    {
+      "name": "Choice Control",
+      "kind": "chip",
+      "refersTo": "choice-selected",
+      "description": "Segmented choice: selected is a 1.5dp ink line on transparent, unselected a 1dp rule line. No fill, no check.",
+      "html": "<div class=\"ds-seg\" role=\"radiogroup\"><button class=\"ds-seg-item\" role=\"radio\" aria-checked=\"true\">EN</button><button class=\"ds-seg-item\" role=\"radio\" aria-checked=\"false\">DE</button></div>",
+      "css": ".ds-seg{display:inline-flex}.ds-seg-item{font-family:'Schibsted Grotesk',system-ui,sans-serif;background:transparent;height:40px;min-width:56px;padding:0 16px;font-size:14px;font-weight:500;color:#5E6268;border:1px solid #D9DBDE;cursor:pointer}.ds-seg-item:first-child{border-radius:9999px 0 0 9999px}.ds-seg-item:last-child{border-radius:0 9999px 9999px 0;margin-left:-1px}.ds-seg-item[aria-checked=true]{color:#1A1A1A;border:1.5px solid #1A1A1A;position:relative;z-index:1}.ds-seg-item:hover{color:#1A1A1A}.ds-seg-item:focus-visible{outline:2px solid #1A1A1A;outline-offset:2px}"
+    },
+    {
+      "name": "Note Field",
+      "kind": "input",
+      "refersTo": "note-field",
+      "description": "Borderless, transparent text field; the reader's words appear in graphite.",
+      "html": "<label class=\"ds-note-field\"><textarea rows=\"3\" placeholder=\"Say or type your note\">Walton asks for encouragement the way Victor later asks for forgiveness.</textarea></label>",
+      "css": ".ds-note-field{display:block;background:#F4F4F2;padding:12px 24px}.ds-note-field textarea{font-family:'Schibsted Grotesk',system-ui,sans-serif;width:100%;border:none;background:transparent;resize:none;font-size:17px;line-height:26px;color:#5E6268;caret-color:#5E6268;outline:none}.ds-note-field textarea::placeholder{color:#5E6268;opacity:.85}.ds-note-field:focus-within{box-shadow:inset 0 -1px 0 #D9DBDE}"
+    },
+    {
+      "name": "Margin Tick",
+      "kind": "custom",
+      "refersTo": "note-row",
+      "description": "Signature graphite stroke; state is its form: solid passage, dashed page, doubled open or just filed.",
+      "html": "<div class=\"ds-ticks\"><span class=\"ds-tick\"></span><span class=\"ds-tick ds-tick--dashed\"></span><span class=\"ds-tick ds-tick--doubled\"></span><span class=\"ds-count\"><span class=\"ds-tick ds-tick--small\"></span>3</span></div>",
+      "css": ".ds-ticks{display:flex;gap:28px;align-items:center;padding:16px}.ds-tick{display:inline-block;width:2px;height:48px;border-radius:1px;background:#8E9298}.ds-tick--dashed{background:repeating-linear-gradient(#8E9298 0 5px,transparent 5px 9px)}.ds-tick--doubled{width:6px;background:linear-gradient(90deg,#8E9298 0 2px,transparent 2px 4px,#8E9298 4px 6px)}.ds-tick--small{height:12px;margin-right:6px}.ds-count{font-family:'Schibsted Grotesk',system-ui,sans-serif;display:inline-flex;align-items:center;font-size:11px;font-weight:500;letter-spacing:.02em;color:#5E6268}"
+    },
+    {
+      "name": "Note Row",
+      "kind": "card",
+      "refersTo": "note-row",
+      "description": "Passage in the book face beside the tick, note in graphite hanging beneath, then position and date.",
+      "html": "<article class=\"ds-note-row\" tabindex=\"0\"><div class=\"ds-note-passage\"><span class=\"ds-note-tick\"></span><p>courage and my resolution is firm; but my hopes fluctuate, and my spirits are often depressed.</p></div><div class=\"ds-note-body\"><p>Walton asks for encouragement the way Victor later asks for forgiveness. Both want a witness more than a friend.</p><span class=\"ds-note-meta\">3%&nbsp;&nbsp;·&nbsp;&nbsp;7 Oct</span></div></article>",
+      "css": ".ds-note-row{background:#FAFAF8;padding:14px 24px 16px 20px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:background .15s}.ds-note-row:hover{background:#F4F4F2}.ds-note-row:focus-visible{outline:2px solid #1A1A1A;outline-offset:-2px}.ds-note-passage{display:flex;gap:14px}.ds-note-tick{flex:none;width:2px;margin:3px 0;border-radius:1px;background:#8E9298}.ds-note-passage p{font-family:Literata,'Source Serif 4',Georgia,serif;margin:0;font-size:16px;line-height:24px;color:#1A1A1A}.ds-note-body{padding-left:16px;display:flex;flex-direction:column;gap:6px}.ds-note-body p{font-family:'Schibsted Grotesk',system-ui,sans-serif;margin:0;font-size:16px;line-height:24px;color:#5E6268}.ds-note-meta{font-family:'Schibsted Grotesk',system-ui,sans-serif;font-size:11px;line-height:14px;font-weight:500;letter-spacing:.02em;color:#5E6268}"
+    },
+    {
+      "name": "In-book Pencil Line",
+      "kind": "custom",
+      "refersTo": "note-row",
+      "description": "Readium decoration: 1.5px graphite underline drawn with gradients (night mode overrides borders), plus a margin stroke.",
+      "html": "<p class=\"ds-book\"><span class=\"ds-mark\"></span>I am already far north of London, and as I walk in the streets, I feel <span class=\"ds-pencil\">a cold northern breeze play upon my cheeks</span>, which braces my nerves.</p>",
+      "css": ".ds-book{font-family:Literata,'Source Serif 4',Georgia,serif;position:relative;background:#FAFAF8;color:#1A1A1A;font-size:18px;line-height:28px;padding:16px 24px 16px 32px;margin:0}.ds-mark{position:absolute;left:14px;top:22px;bottom:22px;width:2px;border-radius:1px;background:#8E9298}.ds-pencil{background:linear-gradient(#8E9298,#8E9298) left bottom/100% 1.5px no-repeat;padding-bottom:1px}.ds-pencil:hover{background:linear-gradient(#8E9298,#8E9298) left bottom/100% 1.5px no-repeat,linear-gradient(#8E9298,#8E9298) left calc(100% - 4px)/100% 1.5px no-repeat}"
+    },
+    {
+      "name": "Reader Top Chrome",
+      "kind": "nav",
+      "refersTo": "reader-chrome",
+      "description": "Summoned by a centre tap: back, title over chapter, note count, settings; a hairline rule below.",
+      "html": "<header class=\"ds-chrome\"><button class=\"ds-icon\" aria-label=\"Back to library\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z\"/></svg></button><div class=\"ds-chrome-title\"><strong>Frankenstein</strong><span>Letter 1</span></div><button class=\"ds-chrome-count\" aria-label=\"Notes, 3\"><span></span>3</button><button class=\"ds-icon\" aria-label=\"Reading settings\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M2.5 4v3h5v12h3V7h5V4h-13zm19 5h-9v3h3v7h3v-7h3V9z\"/></svg></button></header>",
+      "css": ".ds-chrome{display:flex;align-items:center;min-height:64px;padding:0 4px;background:#FAFAF8;color:#1A1A1A;border-bottom:1px solid #D9DBDE}.ds-icon{width:48px;height:48px;border:none;background:transparent;color:#1A1A1A;border-radius:50%;display:grid;place-items:center;cursor:pointer}.ds-icon:hover{background:rgba(26,26,26,.06)}.ds-icon:focus-visible,.ds-chrome-count:focus-visible{outline:2px solid #1A1A1A;outline-offset:-2px}.ds-chrome-title{font-family:'Schibsted Grotesk',system-ui,sans-serif;flex:1;display:flex;flex-direction:column;padding:0 4px;min-width:0}.ds-chrome-title strong{font-size:16px;line-height:22px;font-weight:600;letter-spacing:-.005em}.ds-chrome-title span{font-size:12px;line-height:16px;font-weight:500;color:#5E6268}.ds-chrome-count{font-family:'Schibsted Grotesk',system-ui,sans-serif;display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 12px;border:none;background:transparent;border-radius:9999px;font-size:14px;font-weight:500;color:#1A1A1A;cursor:pointer}.ds-chrome-count:hover{background:rgba(26,26,26,.06)}.ds-chrome-count span{width:2px;height:12px;border-radius:1px;background:#8E9298}"
+    },
+    {
+      "name": "Book Cover Cell",
+      "kind": "card",
+      "refersTo": "book-cover",
+      "description": "Library cell: 3dp-corner cover with a soft lift, title, author, progress and graphite note count.",
+      "html": "<figure class=\"ds-cell\"><div class=\"ds-cover\"><span class=\"ds-cover-title\">The Time Machine</span><span class=\"ds-cover-author\">H. G. Wells</span></div><figcaption><strong>The Time Machine</strong><span class=\"ds-author\">H. G. Wells</span><span class=\"ds-cell-meta\"><span>37%</span><span class=\"ds-cell-count\"><i></i>3</span></span></figcaption></figure>",
+      "css": ".ds-cell{font-family:'Schibsted Grotesk',system-ui,sans-serif;width:120px;margin:16px;cursor:pointer}.ds-cover{aspect-ratio:2/3;border-radius:3px;background:#E9E9E7;border:1px solid rgba(217,219,222,.6);box-shadow:0 1px 3px rgba(0,0,0,.18);padding:12px 10px 10px 10px;display:flex;flex-direction:column;justify-content:space-between;transition:box-shadow .15s}.ds-cell:hover .ds-cover{box-shadow:0 2px 6px rgba(0,0,0,.2)}.ds-cell:focus-visible{outline:2px solid #1A1A1A;outline-offset:4px}.ds-cover-title{font-size:13px;line-height:17px;font-weight:600;color:#1A1A1A}.ds-cover-author{font-size:11px;font-weight:500;color:#5E6268}.ds-cell figcaption{display:flex;flex-direction:column;margin-top:10px}.ds-cell strong{font-size:14px;line-height:20px;font-weight:600;color:#1A1A1A}.ds-author{font-size:12px;line-height:16px;color:#5E6268;margin-top:2px}.ds-cell-meta{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;font-weight:500;letter-spacing:.02em;color:#5E6268}.ds-cell-count{display:inline-flex;align-items:center;gap:6px}.ds-cell-count i{width:2px;height:12px;border-radius:1px;background:#8E9298}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Pencil Marginalia",
+    "overview": "Reed treats the book as printed ink and the reader as a pencil. The book's words are ink (#1A1A1A on a neutral paper white); everything the reader writes is graphite, set beside the text and never on top of it. The two hands stay legible as two hands on every screen: in the reader margin, in the note sheet, in the notes list, and in the library's note counts. One mark carries this through the whole app: a thin graphite stroke in the margin, the margin tick, whose line form (solid, dashed, doubled) is the only way note state is expressed.\n\nThe surface is flat, neutral and quiet. Paper is not cream, type is not sepia, the UI is not serif. Schibsted Grotesk carries every piece of chrome and every word the reader writes; the book's own face appears only for the book's words. Chrome is summoned by a centre tap and leaves the page full-bleed when dismissed. Colour is nearly absent: one pencil-yellow accent exists, and it belongs to the dictation button alone, so the one-tap mic is the only coloured thing on a note sheet.\n\nThe system explicitly refuses three category defaults: coloured highlighter blocks laid over book text, toolbar-heavy reader chrome, and the cream-sepia-serif \"cosy reader\" look.",
+    "keyCharacteristics": [
+      "Two hands: ink for the book and UI, graphite for the reader's own words.",
+      "The margin tick is the signature mark; state lives in its line form, never in hue.",
+      "Pencil yellow exists for dictation only.",
+      "Flat paper with Material tonal containers; only book covers cast shadows.",
+      "One grotesk for UI, the reader's chosen book face for book words.",
+      "Selection is a line, never a fill."
+    ],
+    "rules": [
+      {
+        "name": "The Two Hands Rule",
+        "body": "Book words and UI are ink; anything the reader wrote is graphite. A note body is never set in ink, and a quoted passage is never set in graphite.",
+        "section": "colors"
+      },
+      {
+        "name": "The Pencil Yellow Rule",
+        "body": "Pencil yellow appears on the dictation button and its halo, and nowhere else: not highlights, not selection, not badges, not focus, not branding. If a second yellow thing appears on a screen, one of them is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fixed Palette Rule",
+        "body": "Dynamic Color is off. Reed's palette is fixed and the reading theme drives app chrome; never derive colours from the wallpaper.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Grotesk Rule",
+        "body": "Schibsted Grotesk sets all UI and all reader-written text. The book face appears only for the book's words (the reader page, quoted passages, typeface previews). No serif in chrome; no book face for notes.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "No uppercase labels, no tracked-out kickers. Hierarchy comes from weight (400/500/600) and the ink/graphite split.",
+        "section": "typography"
+      },
+      {
+        "name": "The Chrome On Request Rule",
+        "body": "The reader page shows only the book. Chrome enters on a centre tap (fade 160ms with a one-third slide over 200ms) and leaves faster (140/160ms). Nothing persistent overlays the text.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Paper Rule",
+        "body": "Surfaces are flat. Only book covers (and the FAB's stock elevation) cast shadows; never add shadow to cards, rows, sheets or chrome.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One Selected Line Rule",
+        "body": "Every choice control shows selection as a 1.5dp ink line on a transparent container (`selectedLine()`, `reedSegmentedColors()`). Never a tonal fill, never a check mark, never colour.",
+        "section": "components"
+      },
+      {
+        "name": "The State-In-Form Rule",
+        "body": "Note state is expressed only by the tick's line form (solid, dashed, doubled), never by hue, weight or fill.",
+        "section": "components"
+      },
+      {
+        "name": "The Beside Not On Rule",
+        "body": "Notes never paint a block behind book text. Passages are marked with an underline and a margin stroke only.",
+        "section": "components"
+      },
+      {
+        "name": "The Gradient Line Rule",
+        "body": "Readium's night mode forces `border-color` to the text colour on every element, so decoration lines are drawn with `linear-gradient` backgrounds (or pseudo-element fills), never with borders.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "**Do** set every reader-written word in graphite (`graphite` / `night-graphite`) and Schibsted Grotesk.",
+      "**Do** quote book passages in the reader's chosen book face, in ink, beside a margin tick.",
+      "**Do** express note state through the tick's line form: solid passage, dashed page, doubled open or just filed.",
+      "**Do** show selection with `selectedLine()`: 1.5dp ink on transparent, 1dp rule when unselected.",
+      "**Do** draw any in-book line with background gradients, since Readium night mode overrides borders.",
+      "**Do** keep pencil yellow on the mic and its halo only, with the Night/Black resting variant (14% fill, 1.5dp ring).",
+      "**Do** separate chrome from the page with 1dp rules and tonal containers instead of shadows.",
+      "**Do** swap the whole palette with the reading theme (Paper, Night, Black, Auto), including app chrome."
+    ],
+    "donts": [
+      "**Don't** lay coloured highlighter blocks over book text, in any colour.",
+      "**Don't** use pencil yellow for selection, highlights, badges, focus or brand.",
+      "**Don't** use `outline` (`graphite-light`) as a text colour; secondary text is `onSurfaceVariant` (graphite).",
+      "**Don't** use the margin tick as ornament (headings, empty states, dividers); it marks notes and note counts.",
+      "**Don't** mix selected-state treatments (fills, check icons, tonal chips); there is one ink line.",
+      "**Don't** add persistent toolbars or overlays to the reader page.",
+      "**Don't** use cream or sepia paper, or a serif in UI chrome.",
+      "**Don't** add shadows to anything but book covers.",
+      "**Don't** enable Dynamic Color."
+    ]
+  }
+}
