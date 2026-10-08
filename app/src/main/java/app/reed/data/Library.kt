@@ -14,7 +14,11 @@ import org.readium.r2.shared.publication.Publication
 import org.readium.r2.shared.publication.services.cover
 import org.readium.r2.shared.publication.services.isRestricted
 import org.readium.r2.shared.util.asset.AssetRetriever
+import org.readium.r2.shared.util.Try
+import org.readium.r2.shared.util.Url
 import org.readium.r2.shared.util.getOrElse
+import org.readium.r2.shared.util.resource.TransformingContainer
+import org.readium.r2.shared.util.resource.map
 import org.readium.r2.shared.util.http.DefaultHttpClient
 import org.readium.r2.streamer.PublicationOpener
 import org.readium.r2.streamer.parser.DefaultPublicationParser
@@ -47,6 +51,16 @@ class Library(
             pdfFactory = PdfiumDocumentFactory(context),
         ),
     )
+
+    /**
+     * Chapters pass through [ScanCleanup] as they're read. Passed to each `open` call: Readium 3.4
+     * ignores the hook given to the PublicationOpener constructor (the parameter shadows it).
+     */
+    private val cleanScans: Publication.Builder.() -> Unit = {
+        container = TransformingContainer(container) { url, resource ->
+            if (url.isHtml()) resource.map { Try.success(ScanCleanup.clean(it)) } else resource
+        }
+    }
 
     private val booksDir = File(context.filesDir, "books").apply { mkdirs() }
     private val coversDir = File(context.filesDir, "covers").apply { mkdirs() }
@@ -94,7 +108,7 @@ class Library(
             staging.delete()
             return@withContext ImportResult.Failed(fileName, reason)
         }
-        val publication = publicationOpener.open(asset, allowUserInteraction = false).getOrElse {
+        val publication = publicationOpener.open(asset, allowUserInteraction = false, onCreatePublication = cleanScans).getOrElse {
             asset.close()
             Timber.w("Import: couldn't open %s: %s", fileName, it.message)
             val reason = when {
@@ -157,7 +171,7 @@ class Library(
             Timber.w("Open: couldn't retrieve %s: %s", book.title, it.message)
             return@withContext null
         }
-        publicationOpener.open(asset, allowUserInteraction = false).getOrElse {
+        publicationOpener.open(asset, allowUserInteraction = false, onCreatePublication = cleanScans).getOrElse {
             Timber.w("Open: couldn't open %s: %s", book.title, it.message)
             asset.close()
             null
@@ -174,6 +188,12 @@ class Library(
 
     suspend fun setPrivate(bookId: Long, isPrivate: Boolean) {
         db.books().setPrivate(bookId, isPrivate)
+        onNotesChanged()
+    }
+
+    /** Some books declare the wrong language; it picks the read-aloud voice, hyphenation and dictation. */
+    suspend fun setLanguage(bookId: Long, language: String) {
+        db.books().setLanguage(bookId, language)
         onNotesChanged()
     }
 
@@ -239,6 +259,9 @@ class Library(
  * True when the file starts like an EPUB (ZIP) or PDF. Used to tell a damaged or half-downloaded
  * book apart from a file that was never a book.
  */
+private fun Url.isHtml(): Boolean =
+    path?.substringAfterLast('.')?.lowercase() in setOf("html", "htm", "xhtml")
+
 private fun File.looksLikeBook(): Boolean = runCatching {
     val head = ByteArray(4)
     val read = inputStream().use { it.read(head) }

@@ -206,6 +206,11 @@ class ReaderViewModel(
                 action = "Install",
                 onAction = { openSystem(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) },
             )
+            is ReadAloud.Event.FallbackVoice -> ReaderMessage(
+                "No ${event.language} voice installed, reading with the default voice",
+                action = "Install",
+                onAction = { openSystem(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) },
+            )
             ReadAloud.Event.NeedsNetwork -> ReaderMessage("This voice needs an internet connection")
             ReadAloud.Event.Failed -> ReaderMessage("Reading aloud stopped")
         }

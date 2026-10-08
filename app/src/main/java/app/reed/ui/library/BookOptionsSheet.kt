@@ -24,6 +24,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,7 +43,9 @@ import app.reed.data.BookWithCount
 import app.reed.ui.components.BookCover
 import app.reed.ui.components.NoteCount
 import app.reed.ui.theme.Margin
+import app.reed.ui.theme.reedSegmentedColors
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +55,7 @@ fun BookOptionsSheet(
     onDismiss: () -> Unit,
     onNotes: () -> Unit,
     onSetPrivate: (Boolean) -> Unit,
+    onSetLanguage: (String) -> Unit,
     onRemove: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -77,6 +83,8 @@ fun BookOptionsSheet(
                     }
                 }
             }
+            HorizontalDivider(color = Margin.colors.rule)
+            BookLanguage(book.language, onSetLanguage)
             HorizontalDivider(color = Margin.colors.rule)
             Spacer(Modifier.height(8.dp))
             val itemColors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
@@ -155,5 +163,39 @@ fun BookOptionsSheet(
             },
             dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text("Cancel") } },
         )
+    }
+}
+
+/**
+ * The book's language, which picks the read-aloud voice, hyphenation and the dictation default.
+ * Some files declare the wrong one; English and German are offered, plus the declared language
+ * if it's another.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BookLanguage(language: String?, onSetLanguage: (String) -> Unit) {
+    val current = language?.substringBefore('-')?.lowercase()
+    val choices = (listOf("en", "de") + listOfNotNull(current?.takeIf { it.isNotBlank() })).distinct()
+    Column(Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+        Text("Language", style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Picks the voice for reading aloud, hyphenation and dictation",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            choices.forEachIndexed { i, code ->
+                SegmentedButton(
+                    selected = current == code,
+                    onClick = { if (current != code) onSetLanguage(code) },
+                    shape = SegmentedButtonDefaults.itemShape(i, choices.size),
+                    colors = reedSegmentedColors(),
+                    icon = {},
+                    label = { Text(Locale.forLanguageTag(code).getDisplayLanguage(Locale.ENGLISH).ifBlank { code }) },
+                )
+            }
+        }
     }
 }

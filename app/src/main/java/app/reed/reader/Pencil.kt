@@ -21,6 +21,7 @@ import org.readium.r2.navigator.preferences.FontFamily
 import org.readium.r2.navigator.preferences.Theme
 import org.readium.r2.shared.ExperimentalReadiumApi
 import org.readium.r2.shared.publication.Locator
+import org.readium.r2.shared.util.Language
 import org.readium.r2.navigator.epub.css.FontStyle
 import org.readium.r2.navigator.epub.css.RsProperties
 import org.readium.r2.navigator.epub.css.Color as CssColor
@@ -170,7 +171,7 @@ fun pencilSelection(): RsProperties = RsProperties(
     selectionBackgroundColor = CssColor.Int(0x598E9298),
 )
 
-fun ReadingSettings.toEpubPreferences(resolved: ReadingTheme): EpubPreferences {
+fun ReadingSettings.toEpubPreferences(resolved: ReadingTheme, language: String?): EpubPreferences {
     val (background, text) = when (resolved) {
         ReadingTheme.NIGHT -> Palette.NightPaper to Palette.NightInk
         ReadingTheme.BLACK -> Palette.BlackPaper to Palette.BlackInk
@@ -187,6 +188,8 @@ fun ReadingSettings.toEpubPreferences(resolved: ReadingTheme): EpubPreferences {
         publisherStyles = false,
         // Keep the book's own alignment (centred headings, set-right datelines); hyphenate to close justified gaps.
         hyphens = true,
+        // The book's own declaration can be wrong; Reed's (changeable in the book's options) wins.
+        language = language?.let { Language(it) },
         scroll = false,
     )
 }

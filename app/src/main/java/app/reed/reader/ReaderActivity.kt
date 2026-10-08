@@ -32,6 +32,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.reed.data.BookFormat
 import app.reed.data.Note
+import app.reed.data.ReadingSettings
 import app.reed.data.ReadingTheme
 import app.reed.data.toLocator
 import app.reed.databinding.ActivityReaderBinding
@@ -42,10 +43,13 @@ import app.reed.ui.theme.isDark
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.readium.adapter.pdfium.navigator.PdfiumEngineProvider
 import org.readium.r2.navigator.DecorableNavigator
 import org.readium.r2.navigator.SelectableNavigator
@@ -132,7 +136,7 @@ class ReaderActivity : FragmentActivity() {
     private fun fragmentFactory(session: ReaderSession): FragmentFactory = when (session.book.format) {
         BookFormat.EPUB -> EpubNavigatorFactory(session.publication).createFragmentFactory(
             initialLocator = session.initialLocator,
-            initialPreferences = model.settings.value.toEpubPreferences(resolvedTheme()),
+            initialPreferences = model.settings.value.toEpubPreferences(resolvedTheme(), session.book.language),
             configuration = EpubNavigatorFragment.Configuration {
                 decorationTemplates = pencilTemplates()
                 readiumCssRsProperties = pencilSelection()
@@ -189,7 +193,18 @@ class ReaderActivity : FragmentActivity() {
                         }.collect { navigator.applyDecorations(it, NOTES_GROUP) }
                     }
                     launch {
-                        model.settings.collect { navigator.submitPreferences(it.toEpubPreferences(it.theme.resolveNow())) }
+                        var applied: ReadingSettings? = null
+                        model.settings.collect { settings ->
+                            val anchor = applied?.takeIf { settings.reflowsFrom(it) }?.let { navigator.firstVisibleWords() }
+                            navigator.submitPreferences(settings.toEpubPreferences(settings.theme.resolveNow(), model.session?.book?.language))
+                            applied = settings
+                            if (anchor != null) {
+                                // Readium places the page by a rough position after the reflow; put back the words.
+                                withTimeoutOrNull(1_500) { navigator.currentLocator.drop(1).first() }
+                                model.settle()
+                                navigator.go(anchor, animated = false)
+                            }
+                        }
                     }
                     launch {
                         combine(model.listening, model.settings) { listening, settings ->

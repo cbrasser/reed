@@ -53,6 +53,7 @@ import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
 import org.readium.r2.shared.publication.services.content.Content
 import org.readium.r2.shared.publication.services.content.content
+import org.readium.r2.shared.util.Language
 import org.readium.r2.shared.util.getOrElse
 import timber.log.Timber
 import java.io.File
@@ -77,17 +78,20 @@ class ReadAloud(
         data object NoEngine : Event
         data object Unreadable : Event
         data class MissingVoice(val language: String) : Event
+        /** No voice for the book's language: Android reads it with the default voice instead. */
+        data class FallbackVoice(val language: String) : Event
         data object NeedsNetwork : Event
         data object Failed : Event
     }
 
     private class Session(
-        val bookId: Long,
+        val book: Book,
         val navigator: AndroidTtsNavigator,
         val publication: Publication,
         val mediaSession: MediaSession,
     ) {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        val bookId: Long get() = book.id
     }
 
     private val scope = MainScope()
@@ -156,7 +160,7 @@ class ReadAloud(
                     override fun onStopRequested() = stop()
                 },
                 initialLocator = start,
-                initialPreferences = AndroidTtsPreferences(speed = settings.listenSpeed.first()),
+                initialPreferences = voicePreferences(book, settings.listenSpeed.first()),
             )
         }
         if (created == null) {
@@ -172,7 +176,7 @@ class ReadAloud(
             .setId("read-aloud-${sessionCount++}")
             .setSessionActivity(openReader(bookId))
             .build()
-        val session = Session(bookId, navigator, publication, mediaSession)
+        val session = Session(book, navigator, publication, mediaSession)
         current.value = session
         watch(session)
         try {
@@ -181,6 +185,12 @@ class ReadAloud(
             Timber.w(e, "Read aloud: couldn't start the service")
             stop()
             return fail(Event.Failed)
+        }
+        book.language?.let { language ->
+            val wanted = Locale.forLanguageTag(language).iso3()
+            if (navigator.voices.none { it.language.locale.iso3() == wanted }) {
+                _events.tryEmit(Event.FallbackVoice(Locale.forLanguageTag(language).getDisplayLanguage(Locale.ENGLISH)))
+            }
         }
         if (from != null && start != null) skipToSentence(navigator, from, start)
         navigator.play()
@@ -288,9 +298,13 @@ class ReadAloud(
             .launchIn(session.scope)
         settings.listenSpeed
             .distinctUntilChanged()
-            .onEach { navigator.submitPreferences(AndroidTtsPreferences(speed = it)) }
+            .onEach { navigator.submitPreferences(voicePreferences(session.book, it)) }
             .launchIn(session.scope)
     }
+
+    /** The voice for the book's language as Reed knows it, which can differ from what the file declares. */
+    private fun voicePreferences(book: Book, speed: Double) =
+        AndroidTtsPreferences(language = book.language?.let { Language(it) }, speed = speed)
 
     private fun eventFor(error: TtsNavigator.Error): Event = when (val cause = (error as? TtsNavigator.Error.EngineError<*>)?.cause) {
         is AndroidTtsEngine.Error.LanguageMissingData ->
@@ -346,6 +360,9 @@ class ReadAloud(
         const val MAX_SKIPPED_SENTENCES = 60
     }
 }
+
+/** Engines name languages either way ("de", "deu"); the three-letter code compares them. */
+private fun Locale.iso3(): String = runCatching { isO3Language }.getOrDefault(language)
 
 private fun String.collapsed() = replace(Regex("\\s+"), " ").trim()
 

@@ -90,6 +90,7 @@ class MainActivity : FragmentActivity() {
                                 onLock = libraryModel::lockPrivate,
                                 onSendNotes = { sendNotes = true },
                                 onSetPrivate = { book, private -> libraryModel.setPrivate(book, private) },
+                                onSetLanguage = { book, language -> libraryModel.setLanguage(book, language) },
                                 onRemove = { libraryModel.remove(it) },
                                 canMakePrivate = canMakePrivate,
                             )
