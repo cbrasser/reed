@@ -45,6 +45,7 @@ Your own words are always set in graphite, the book's in ink, so you can tell th
 - Keeps going with the screen off or the book closed, with controls in the notification, on the lock screen and on headphones.
 - Remembers where it stopped: play again and it picks up at that sentence, or at the top of the page you've turned to.
 - Uses the phone's speech engine and the voice for the book's language. EPUB only.
+- If a book declares the wrong language, change it in the book's options (long-press in the library); that also fixes its hyphenation and the dictation default.
 
 **Every note, in context**
 - All passage and note pairs for a book, grouped by chapter, in reading order.

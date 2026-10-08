@@ -108,6 +108,10 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         failed.forEach { messages.send(LibraryMessage(it.explain())) }
     }
 
+    fun setLanguage(book: BookWithCount, language: String) = viewModelScope.launch {
+        library.setLanguage(book.id, language)
+    }
+
     fun setPrivate(book: BookWithCount, isPrivate: Boolean) = viewModelScope.launch {
         library.setPrivate(book.id, isPrivate)
         val text = if (isPrivate) {

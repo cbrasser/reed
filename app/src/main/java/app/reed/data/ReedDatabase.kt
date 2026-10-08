@@ -58,6 +58,9 @@ interface BookDao {
     @Query("UPDATE books SET lastOpenedAt = :at WHERE id = :id")
     suspend fun markOpened(id: Long, at: Long)
 
+    @Query("UPDATE books SET language = :language WHERE id = :id")
+    suspend fun setLanguage(id: Long, language: String)
+
     @Query("UPDATE books SET isPrivate = :isPrivate WHERE id = :id")
     suspend fun setPrivate(id: Long, isPrivate: Boolean)
 }

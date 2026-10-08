@@ -99,6 +99,7 @@ fun LibraryScreen(
     onLock: () -> Unit,
     onSendNotes: () -> Unit,
     onSetPrivate: (BookWithCount, Boolean) -> Unit,
+    onSetLanguage: (BookWithCount, String) -> Unit,
     onRemove: (BookWithCount) -> Unit,
     canMakePrivate: Boolean,
 ) {
@@ -231,6 +232,7 @@ fun LibraryScreen(
             onDismiss = { optionsFor = null },
             onNotes = { onOpenNotes(book) },
             onSetPrivate = { onSetPrivate(book, it) },
+            onSetLanguage = { onSetLanguage(book, it) },
             onRemove = { onRemove(book) },
         )
     }

@@ -136,7 +136,7 @@ class ReaderActivity : FragmentActivity() {
     private fun fragmentFactory(session: ReaderSession): FragmentFactory = when (session.book.format) {
         BookFormat.EPUB -> EpubNavigatorFactory(session.publication).createFragmentFactory(
             initialLocator = session.initialLocator,
-            initialPreferences = model.settings.value.toEpubPreferences(resolvedTheme()),
+            initialPreferences = model.settings.value.toEpubPreferences(resolvedTheme(), session.book.language),
             configuration = EpubNavigatorFragment.Configuration {
                 decorationTemplates = pencilTemplates()
                 readiumCssRsProperties = pencilSelection()
@@ -196,7 +196,7 @@ class ReaderActivity : FragmentActivity() {
                         var applied: ReadingSettings? = null
                         model.settings.collect { settings ->
                             val anchor = applied?.takeIf { settings.reflowsFrom(it) }?.let { navigator.firstVisibleWords() }
-                            navigator.submitPreferences(settings.toEpubPreferences(settings.theme.resolveNow()))
+                            navigator.submitPreferences(settings.toEpubPreferences(settings.theme.resolveNow(), model.session?.book?.language))
                             applied = settings
                             if (anchor != null) {
                                 // Readium places the page by a rough position after the reflow; put back the words.

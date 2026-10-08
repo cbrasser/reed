@@ -191,6 +191,12 @@ class Library(
         onNotesChanged()
     }
 
+    /** Some books declare the wrong language; it picks the read-aloud voice, hyphenation and dictation. */
+    suspend fun setLanguage(bookId: Long, language: String) {
+        db.books().setLanguage(bookId, language)
+        onNotesChanged()
+    }
+
     /** Where book files are kept; downloads are staged here before import. */
     val booksFolder: File get() = booksDir
 
