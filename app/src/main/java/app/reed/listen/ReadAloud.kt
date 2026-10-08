@@ -35,15 +35,17 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import org.readium.navigator.media.common.Media3Adapter
 import org.readium.navigator.media.common.MediaMetadataFactory
 import org.readium.navigator.media.common.MediaMetadataProvider
-import org.readium.navigator.media.tts.AndroidTtsNavigator
 import org.readium.navigator.media.tts.TtsNavigator
 import org.readium.navigator.media.tts.TtsNavigatorFactory
 import org.readium.navigator.media.tts.android.AndroidTtsEngine
@@ -55,12 +57,16 @@ import org.readium.r2.shared.publication.services.content.Content
 import org.readium.r2.shared.publication.services.content.content
 import org.readium.r2.shared.util.Language
 import org.readium.r2.shared.util.getOrElse
+import org.readium.r2.shared.publication.services.content.TextContentTokenizer
+import org.readium.r2.shared.util.tokenizer.DefaultTextContentTokenizer
+import org.readium.r2.shared.util.tokenizer.TextUnit
 import timber.log.Timber
 import java.io.File
 import java.util.Locale
 
 /**
- * Reads one book aloud at a time with the phone's speech engine, sentence by sentence.
+ * Reads one book aloud at a time, sentence by sentence: with a voice Reed downloaded for the
+ * book's language ([PiperEngine]) when there is one, otherwise with the phone's speech engine.
  * Lives with the app, not the reader screen, and [ReadAloudService] keeps it going with the
  * screen off. Every sentence reached becomes the book's position.
  */
@@ -80,13 +86,17 @@ class ReadAloud(
         data class MissingVoice(val language: String) : Event
         /** No voice for the book's language: Android reads it with the default voice instead. */
         data class FallbackVoice(val language: String) : Event
+        /** Nothing on the phone speaks the book's language, but Reed can download [voice]. */
+        data class NeedsVoice(val bookId: Long, val voice: CatalogVoice) : Event
         data object NeedsNetwork : Event
         data object Failed : Event
     }
 
     private class Session(
         val book: Book,
-        val navigator: AndroidTtsNavigator,
+        val navigator: TtsNavigator<*, *, *, *>,
+        val setSpeed: (Double) -> Unit,
+        val piper: PiperEngine?,
         val publication: Publication,
         val mediaSession: MediaSession,
     ) {
@@ -95,6 +105,9 @@ class ReadAloud(
     }
 
     private val scope = MainScope()
+
+    /** Voices Reed runs itself, downloaded on request. */
+    val voices = VoiceStore(app, scope)
     private val starting = Mutex()
     private val current = MutableStateFlow<Session?>(null)
     private var sessionCount = 0
@@ -144,39 +157,30 @@ class ReadAloud(
     /** Starts reading [bookId] aloud from [from] (the book's start when null), replacing any other book. */
     suspend fun start(bookId: Long, from: Locator?): Boolean = starting.withLock {
         stop()
-        // Android never answers a speech request on a phone without an engine; ask first.
-        if (!hasEngine()) return fail(Event.NoEngine)
         val book = library.book(bookId) ?: return false
         val publication = library.open(book) ?: return fail(Event.Unreadable)
         val start = from?.let { locate(publication, it) }
-        val factory = TtsNavigatorFactory(app, publication, metadataProvider = metadataFor(book))
-        if (factory == null) {
+        val speed = settings.listenSpeed.first()
+        val installed = voices.installedFor(book.language)
+        val reedVoice = installed?.let { PiperEngine.load(it, PiperPreferences(speed = speed)) }
+        // A voice that won't load is no use; removing it lets the reader offer a fresh download.
+        if (installed != null && reedVoice == null) voices.delete(installed.voice)
+        val engine = if (reedVoice != null) {
+            reedNavigator(book, publication, reedVoice, start, speed)
+        } else {
+            phoneNavigator(book, publication, start, speed)
+        }
+        if (engine == null) {
+            reedVoice?.close()
             publication.close()
-            return fail(Event.Unreadable)
+            return false
         }
-        val created = withTimeoutOrNull(ENGINE_TIMEOUT_MS) {
-            factory.createNavigator(
-                listener = object : TtsNavigator.Listener {
-                    override fun onStopRequested() = stop()
-                },
-                initialLocator = start,
-                initialPreferences = voicePreferences(book, settings.listenSpeed.first()),
-            )
-        }
-        if (created == null) {
-            publication.close()
-            return fail(Event.NoEngine)
-        }
-        val navigator = created.getOrElse { error ->
-            Timber.w("Read aloud: %s", error.message)
-            publication.close()
-            return fail(if (error is TtsNavigatorFactory.Error.EngineInitialization) Event.NoEngine else Event.Unreadable)
-        }
-        val mediaSession = MediaSession.Builder(app, navigator.asMedia3Player())
+        val (navigator, setSpeed) = engine
+        val mediaSession = MediaSession.Builder(app, (navigator as Media3Adapter).asMedia3Player())
             .setId("read-aloud-${sessionCount++}")
             .setSessionActivity(openReader(bookId))
             .build()
-        val session = Session(book, navigator, publication, mediaSession)
+        val session = Session(book, navigator, setSpeed, reedVoice, publication, mediaSession)
         current.value = session
         watch(session)
         try {
@@ -186,22 +190,76 @@ class ReadAloud(
             stop()
             return fail(Event.Failed)
         }
-        book.language?.let { language ->
-            val wanted = Locale.forLanguageTag(language).iso3()
-            if (navigator.voices.none { it.language.locale.iso3() == wanted }) {
-                _events.tryEmit(Event.FallbackVoice(Locale.forLanguageTag(language).getDisplayLanguage(Locale.ENGLISH)))
-            }
-        }
         if (from != null && start != null) skipToSentence(navigator, from, start)
         navigator.play()
         true
+    }
+
+    private val stopListener = object : TtsNavigator.Listener {
+        override fun onStopRequested() = stop()
+    }
+
+    private suspend fun reedNavigator(
+        book: Book,
+        publication: Publication,
+        engine: PiperEngine,
+        start: Locator?,
+        speed: Double,
+    ): Pair<TtsNavigator<*, *, *, *>, (Double) -> Unit>? {
+        val factory = TtsNavigatorFactory(app, publication, PiperEngineProvider(engine), metadataProvider = metadataFor(book))
+            ?: return fail(Event.Unreadable).let { null }
+        val navigator = factory.createNavigator(stopListener, start, PiperPreferences(speed = speed)).getOrElse {
+            Timber.w("Read aloud: %s", it.message)
+            return fail(Event.Unreadable).let { null }
+        }
+        return navigator to { s: Double -> navigator.submitPreferences(PiperPreferences(speed = s)) }
+    }
+
+    /** The phone's speech engine, if it speaks the book's language; otherwise offers Reed's voice. */
+    private suspend fun phoneNavigator(
+        book: Book,
+        publication: Publication,
+        start: Locator?,
+        speed: Double,
+    ): Pair<TtsNavigator<*, *, *, *>, (Double) -> Unit>? {
+        val downloadable = catalogVoiceFor(book.language)
+        // Android never answers a speech request on a phone without an engine; ask first.
+        if (!hasEngine()) {
+            return fail(downloadable?.let { Event.NeedsVoice(book.id, it) } ?: Event.NoEngine).let { null }
+        }
+        val factory = TtsNavigatorFactory(app, publication, metadataProvider = metadataFor(book))
+            ?: return fail(Event.Unreadable).let { null }
+        val created = withTimeoutOrNull(ENGINE_TIMEOUT_MS) {
+            factory.createNavigator(stopListener, start, voicePreferences(book, speed))
+        } ?: return fail(downloadable?.let { Event.NeedsVoice(book.id, it) } ?: Event.NoEngine).let { null }
+        val navigator = created.getOrElse { error ->
+            Timber.w("Read aloud: %s", error.message)
+            val event = when {
+                error !is TtsNavigatorFactory.Error.EngineInitialization -> Event.Unreadable
+                downloadable != null -> Event.NeedsVoice(book.id, downloadable)
+                else -> Event.NoEngine
+            }
+            return fail(event).let { null }
+        }
+        book.language?.let { language ->
+            val wanted = Locale.forLanguageTag(language).iso3()
+            if (navigator.voices.none { it.language.locale.iso3() == wanted }) {
+                // Android would read it with another language's voice: offer Reed's instead.
+                if (downloadable != null) {
+                    navigator.close()
+                    return fail(Event.NeedsVoice(book.id, downloadable)).let { null }
+                }
+                _events.tryEmit(Event.FallbackVoice(Locale.forLanguageTag(language).getDisplayLanguage(Locale.ENGLISH)))
+            }
+        }
+        return navigator to { s: Double -> navigator.submitPreferences(voicePreferences(book, s)) }
     }
 
     /**
      * Readium starts at the paragraph holding [target]; step through its sentences to the one
      * that was being read, or stay at the paragraph's start if it isn't there any more.
      */
-    private suspend fun skipToSentence(navigator: AndroidTtsNavigator, target: Locator, paragraph: Locator) {
+    private suspend fun skipToSentence(navigator: TtsNavigator<*, *, *, *>, target: Locator, paragraph: Locator) {
         val sentence = target.text.highlight?.collapsed()?.takeIf { it.isNotEmpty() } ?: return
         // A position from the page view holds its whole paragraph, which starts where Readium did.
         if (sentence.startsWith(navigator.location.value.utterance.collapsed())) return
@@ -298,8 +356,17 @@ class ReadAloud(
             .launchIn(session.scope)
         settings.listenSpeed
             .distinctUntilChanged()
-            .onEach { navigator.submitPreferences(voicePreferences(session.book, it)) }
+            .onEach { session.setSpeed(it) }
             .launchIn(session.scope)
+        // Reed's voice synthesises the next sentence while this one plays, so there's no pause.
+        session.piper?.let { piper ->
+            val lookahead = Lookahead(session.publication, session.book.language?.let { Language(it) })
+            navigator.location
+                .mapLatest { location -> lookahead.after(location.utteranceLocator, location.utterance, count = 3) }
+                .distinctUntilChanged()
+                .onEach { upcoming -> upcoming.forEach(piper::prefetch) }
+                .launchIn(session.scope)
+        }
     }
 
     /** The voice for the book's language as Reed knows it, which can differ from what the file declares. */
@@ -370,3 +437,59 @@ private fun String.collapsed() = replace(Regex("\\s+"), " ").trim()
 val ListenSpeeds = listOf(0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0)
 
 fun Flow<ReadAloud.State?>.forBook(bookId: Long): Flow<ReadAloud.State?> = map { it?.takeIf { s -> s.bookId == bookId } }
+
+/**
+ * Walks the book alongside the voice to tell which sentence Readium will ask for next, split the
+ * way Readium splits it. Positions only say where a sentence's paragraph is (in some books, just
+ * "body"), so it keeps its place and only searches again after a jump.
+ */
+@OptIn(ExperimentalReadiumApi::class)
+private class Lookahead(private val publication: Publication, language: Language?) {
+    private val tokenizer = TextContentTokenizer(language, overrideContentLanguage = true) {
+        DefaultTextContentTokenizer(TextUnit.Sentence, it)
+    }
+    private var elements: Content.Iterator? = null
+    private val queue = ArrayDeque<String>()
+
+    /** The [count] sentences after [current], which is being read at [at]. */
+    suspend fun after(at: Locator, current: String, count: Int): List<String> = withContext(Dispatchers.Default) {
+        val wanted = current.collapsed()
+        // Usually the sentence being read is the next one in line.
+        if (skipTo(wanted, limit = 50)) return@withContext peek(count)
+        elements = publication.content(at)?.iterator() ?: return@withContext emptyList()
+        queue.clear()
+        if (skipTo(wanted, limit = 5_000)) peek(count) else emptyList()
+    }
+
+    private suspend fun skipTo(wanted: String, limit: Int): Boolean {
+        repeat(limit) {
+            val next = poll() ?: return false
+            if (next.collapsed() == wanted) return true
+        }
+        return false
+    }
+
+    private suspend fun peek(count: Int): List<String> {
+        while (queue.size < count && fill()) Unit
+        return queue.take(count)
+    }
+
+    private suspend fun poll(): String? {
+        if (queue.isEmpty()) fill()
+        return queue.removeFirstOrNull()
+    }
+
+    /** Adds the next paragraph's sentences; false at the end of the book. */
+    private suspend fun fill(): Boolean {
+        val iterator = elements ?: return false
+        val before = queue.size
+        while (queue.size == before && iterator.hasNext()) {
+            tokenizer.tokenize(iterator.next()).forEach { element ->
+                val texts = (element as? Content.TextElement)?.segments?.map { it.text }
+                    ?: listOfNotNull((element as? Content.TextualElement)?.text)
+                texts.filterTo(queue) { text -> text.any { it.isLetterOrDigit() } }
+            }
+        }
+        return queue.size > before
+    }
+}

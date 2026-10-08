@@ -66,6 +66,8 @@ import app.reed.ui.components.NoteCount
 import app.reed.ui.components.NotesList
 import app.reed.ui.notes.EmptyNotes
 import app.reed.ui.theme.Margin
+import app.reed.ui.voices.DownloadProgress
+import app.reed.ui.voices.label
 import app.reed.ui.theme.rememberBookFont
 import kotlin.math.roundToInt
 
@@ -81,6 +83,7 @@ fun ReaderOverlay(
     val book by model.book.collectAsStateWithLifecycle()
     val listening by model.listening.collectAsStateWithLifecycle()
     val listenSpeed by model.listenSpeed.collectAsStateWithLifecycle()
+    val voiceOffer by model.voiceOffer.collectAsStateWithLifecycle()
     val notes by model.notes.collectAsStateWithLifecycle()
     val settings by model.settings.collectAsStateWithLifecycle()
     val chrome by model.chromeVisible.collectAsStateWithLifecycle()
@@ -137,8 +140,17 @@ fun ReaderOverlay(
                 page = if (format == BookFormat.PDF) locator?.locations?.position else null,
                 onNotePage = model::startPageNote,
                 // PDFs carry no text Readium can hand to a voice.
-                onListen = onListen.takeIf { format == BookFormat.EPUB && listening == null },
-                listenRow = listening?.let { current ->
+                onListen = onListen.takeIf { format == BookFormat.EPUB && listening == null && voiceOffer == null },
+                listenRow = voiceOffer?.let { offer ->
+                    {
+                        VoiceOfferRow(
+                            offer = offer,
+                            onDownload = model::downloadVoice,
+                            onCancel = model::cancelVoiceDownload,
+                            onDismiss = model::dismissVoiceOffer,
+                        )
+                    }
+                } ?: listening?.let { current ->
                     {
                         ListenRow(
                             playing = current.playing,
@@ -157,7 +169,7 @@ fun ReaderOverlay(
 
         SnackbarHost(
             snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = if (!chrome) 8.dp else if (listening != null) 152.dp else 88.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = if (!chrome) 8.dp else if (listening != null || voiceOffer != null) 152.dp else 88.dp),
         )
     }
 
@@ -280,6 +292,46 @@ private fun BottomChrome(
                     Text("Note page")
                 }
             }
+        }
+    }
+}
+
+/**
+ * The book's language has no voice yet: offer Reed's, show the download as it runs, and the
+ * reader starts reading by itself once it's ready.
+ */
+@Composable
+private fun VoiceOfferRow(
+    offer: ReaderViewModel.VoiceOffer,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val voice = offer.voice
+    Column(Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                val download = offer.download
+                Text(
+                    if (download == null) "Reading aloud needs a ${voice.languageName} voice" else download.label(voice),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                Text(
+                    if (download == null) "${voice.name} · ${voice.sizeMb} MB, stays on this phone" else "Reading starts when it's ready",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (offer.download == null) {
+                TextButton(onClick = onDismiss) { Text("Not now") }
+                FilledTonalButton(onClick = onDownload) { Text("Download") }
+            } else {
+                TextButton(onClick = onCancel) { Text("Cancel") }
+            }
+        }
+        offer.download?.let {
+            Spacer(Modifier.height(10.dp))
+            DownloadProgress(it, Modifier.fillMaxWidth().padding(end = 12.dp))
         }
     }
 }

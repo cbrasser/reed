@@ -1,5 +1,7 @@
 .gradle/
 build/
+# Fetched by the fetchSherpa Gradle task
+app/libs/
 local.properties
 .idea/
 *.iml

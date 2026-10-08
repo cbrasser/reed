@@ -1,8 +1,34 @@
+import java.net.URI
+import java.security.MessageDigest
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.parcelize)
+}
+
+// sherpa-onnx (on-device voices) only ships as an AAR on its GitHub releases. It's fetched once,
+// pinned by version and checksum, instead of living in git (38 MB).
+val sherpaVersion = "1.13.8"
+val sherpaSha256 = "b22c3fc1b6a45666d28892bb2f7694beeb77a8362d7ebd77c1a5431ec9435471"
+val sherpaAar = layout.projectDirectory.file("libs/sherpa-onnx-static-link-onnxruntime-$sherpaVersion.aar").asFile
+
+fun sha256(file: File): String = MessageDigest.getInstance("SHA-256")
+    .digest(file.readBytes()).joinToString("") { "%02x".format(it) }
+
+val fetchSherpa = tasks.register("fetchSherpa") {
+    description = "Downloads the pinned sherpa-onnx AAR and verifies its checksum."
+    outputs.file(sherpaAar)
+    doLast {
+        if (sherpaAar.exists() && sha256(sherpaAar) == sherpaSha256) return@doLast
+        sherpaAar.parentFile.mkdirs()
+        val url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaVersion/${sherpaAar.name}"
+        val partial = File(sherpaAar.path + ".part")
+        URI(url).toURL().openStream().use { input -> partial.outputStream().use { input.copyTo(it) } }
+        check(sha256(partial) == sherpaSha256) { "Checksum mismatch for $url" }
+        partial.renameTo(sherpaAar)
+    }
 }
 
 fun gitOutput(vararg args: String): String? = providers.exec {
@@ -63,6 +89,13 @@ android {
         viewBinding = true
     }
 
+    packaging {
+        jniLibs {
+            // Reed voices run on 64-bit ARM phones only; elsewhere read-aloud uses the phone's engine.
+            excludes += listOf("lib/armeabi-v7a/libsherpa-onnx-jni.so", "lib/x86/libsherpa-onnx-jni.so", "lib/x86/libonnxruntime.so", "lib/x86_64/libsherpa-onnx-jni.so")
+        }
+    }
+
     androidResources {
         noCompress += listOf("ttf")
     }
@@ -113,4 +146,6 @@ dependencies {
     implementation(libs.readium.pdfium.document)
     implementation(libs.readium.media.tts)
     implementation(libs.media3.session)
+    implementation(files(sherpaAar).builtBy(fetchSherpa))
+    implementation(libs.commons.compress)
 }

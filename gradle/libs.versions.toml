@@ -15,6 +15,7 @@ coil = "3.6.3"
 okhttp = "5.1.0"
 work = "2.10.1"
 media3 = "1.11.0"
+commonsCompress = "1.28.0"
 
 [libraries]
 desugar = { module = "com.android.tools:desugar_jdk_libs", version = "2.1.5" }
@@ -46,6 +47,7 @@ readium-streamer = { module = "org.readium.kotlin-toolkit:readium-streamer", ver
 readium-navigator = { module = "org.readium.kotlin-toolkit:readium-navigator", version.ref = "readium" }
 readium-pdfium-navigator = { module = "org.readium.kotlin-toolkit:readium-adapter-pdfium-navigator", version.ref = "readium" }
 readium-media-tts = { module = "org.readium.kotlin-toolkit:readium-navigator-media-tts", version.ref = "readium" }
+commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commonsCompress" }
 media3-session = { module = "androidx.media3:media3-session", version.ref = "media3" }
 readium-pdfium-document = { module = "org.readium.kotlin-toolkit:readium-adapter-pdfium-document", version.ref = "readium" }
 
