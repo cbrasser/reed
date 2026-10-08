@@ -39,6 +39,7 @@ Existing readers were evaluated and rejected (ReadEra, Moon+ Reader, KOReader, G
 - Reading settings: typeface, size, spacing, theme.
 - Select a text passage, or a whole page, and attach a note.
 - Notes entered by voice (speech-to-text) or typing, in English or German.
+- Books read aloud by the phone's speech engine, with the screen off, resuming where it stopped.
 - Notes browsable per book, showing selected passage and note together; tapping jumps to the location.
 - Private books: a book can be marked private. Private books and their notes are hidden everywhere (library, Reading now, search) until the user authenticates with biometrics or the device PIN/pattern; they re-lock when the app leaves the foreground.
 - Local-first storage. One optional connection: **Send notes to Nextcloud** (library menu). Off by default; signing in happens on the Nextcloud's own page (Login Flow v2, an app password Reed seals with an Android Keystore key). Reading itself never needs the network.
