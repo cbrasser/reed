@@ -40,6 +40,12 @@ Your own words are always set in graphite, the book's in ink, so you can tell th
 - Switch between **English and German** per note.
 - Uses the phone's speech service, or a private on-device app like FUTO Voice Input (works on GrapheneOS).
 
+**Listen to the book**
+- Tap the headphones to have the book read aloud, sentence by sentence; pages turn with the voice and a dotted line marks the sentence being read.
+- Keeps going with the screen off or the book closed, with controls in the notification, on the lock screen and on headphones.
+- Remembers where it stopped: play again and it picks up at that sentence, or at the top of the page you've turned to.
+- Uses the phone's speech engine and the voice for the book's language. EPUB only.
+
 **Every note, in context**
 - All passage and note pairs for a book, grouped by chapter, in reading order.
 - Open them from inside the reader or from the library; tap one to jump straight back to that spot.
@@ -86,6 +92,14 @@ Every release is signed with the same key, so updates install over each other an
 ### Dictation on phones without Google
 
 Reed listens through Android's speech-recognition service. If your phone has none (GrapheneOS, LineageOS without Google), install [FUTO Voice Input](https://voiceinput.futo.org/): Reed opens its "speak now" screen and drops the text into your note, fully on-device, in English and German.
+
+### Reading aloud on phones without Google
+
+Reed reads with Android's text-to-speech engine. Without Google's, install [SherpaTTS](https://f-droid.org/packages/org.woheller69.ttsengine/) from F-Droid for natural, fully on-device voices:
+
+1. In SherpaTTS, download a voice for each language you read (it keeps one per language). `en_GB-cori-high` and `de_DE-thorsten-high` are good places to start.
+2. Tick **Apply system settings (speed / pitch)**, or Reed's speed button won't change anything.
+3. In Android Settings › Accessibility › Text-to-speech output, choose SherpaTTS as the preferred engine.
 
 ## Formats
 

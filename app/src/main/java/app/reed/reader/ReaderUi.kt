@@ -20,18 +20,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.EditNote
+import androidx.compose.material.icons.outlined.Headphones
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -67,8 +76,11 @@ fun ReaderOverlay(
     loading: Boolean,
     onBack: () -> Unit,
     onOpenNote: (Note) -> Unit,
+    onListen: () -> Unit,
 ) {
     val book by model.book.collectAsStateWithLifecycle()
+    val listening by model.listening.collectAsStateWithLifecycle()
+    val listenSpeed by model.listenSpeed.collectAsStateWithLifecycle()
     val notes by model.notes.collectAsStateWithLifecycle()
     val settings by model.settings.collectAsStateWithLifecycle()
     val chrome by model.chromeVisible.collectAsStateWithLifecycle()
@@ -81,7 +93,8 @@ fun ReaderOverlay(
 
     LaunchedEffect(model) {
         model.messages.collect { message ->
-            val result = snackbar.showSnackbar(message.text, actionLabel = message.action)
+            // With an action Material keeps the message up until it's dismissed; nothing here needs that.
+            val result = snackbar.showSnackbar(message.text, actionLabel = message.action, duration = SnackbarDuration.Long)
             if (result == SnackbarResult.ActionPerformed) message.onAction?.invoke()
         }
     }
@@ -123,12 +136,28 @@ fun ReaderOverlay(
                 progression = locator?.locations?.totalProgression ?: book?.progression ?: 0.0,
                 page = if (format == BookFormat.PDF) locator?.locations?.position else null,
                 onNotePage = model::startPageNote,
+                // PDFs carry no text Readium can hand to a voice.
+                onListen = onListen.takeIf { format == BookFormat.EPUB && listening == null },
+                listenRow = listening?.let { current ->
+                    {
+                        ListenRow(
+                            playing = current.playing,
+                            speed = listenSpeed,
+                            onPlay = model::resumeListening,
+                            onPause = model::pauseListening,
+                            onPrevious = model::previousSentence,
+                            onNext = model::nextSentence,
+                            onSpeed = model::cycleListenSpeed,
+                            onStop = model::stopListening,
+                        )
+                    }
+                },
             )
         }
 
         SnackbarHost(
             snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = if (chrome) 88.dp else 8.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = if (!chrome) 8.dp else if (listening != null) 152.dp else 88.dp),
         )
     }
 
@@ -210,7 +239,13 @@ private fun TopChrome(
 }
 
 @Composable
-private fun BottomChrome(progression: Double, page: Int?, onNotePage: () -> Unit) {
+private fun BottomChrome(
+    progression: Double,
+    page: Int?,
+    onNotePage: () -> Unit,
+    onListen: (() -> Unit)?,
+    listenRow: (@Composable () -> Unit)?,
+) {
     Surface(color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.navigationBarsPadding()) {
             LinearProgressIndicator(
@@ -222,6 +257,7 @@ private fun BottomChrome(progression: Double, page: Int?, onNotePage: () -> Unit
                 gapSize = 0.dp,
                 drawStopIndicator = {},
             )
+            listenRow?.invoke()
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(start = 20.dp, end = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -232,6 +268,12 @@ private fun BottomChrome(progression: Double, page: Int?, onNotePage: () -> Unit
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
+                if (onListen != null) {
+                    IconButton(onClick = onListen) {
+                        Icon(Icons.Outlined.Headphones, contentDescription = "Read aloud")
+                    }
+                    Spacer(Modifier.width(4.dp))
+                }
                 FilledTonalButton(onClick = onNotePage) {
                     Icon(Icons.Outlined.EditNote, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
@@ -241,6 +283,56 @@ private fun BottomChrome(progression: Double, page: Int?, onNotePage: () -> Unit
         }
     }
 }
+
+/** Read-aloud controls: stop, sentence back, play/pause, sentence forward, speed. */
+@Composable
+private fun ListenRow(
+    playing: Boolean,
+    speed: Double,
+    onPlay: () -> Unit,
+    onPause: () -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onSpeed: () -> Unit,
+    onStop: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onStop) {
+            Icon(Icons.Outlined.Close, contentDescription = "Stop reading aloud")
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onPrevious) {
+            Icon(Icons.Outlined.SkipPrevious, contentDescription = "Previous sentence")
+        }
+        FilledTonalIconButton(
+            onClick = if (playing) onPause else onPlay,
+            modifier = Modifier.padding(horizontal = 12.dp).size(56.dp),
+        ) {
+            Icon(
+                if (playing) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+                contentDescription = if (playing) "Pause" else "Resume reading aloud",
+                modifier = Modifier.size(28.dp),
+            )
+        }
+        IconButton(onClick = onNext) {
+            Icon(Icons.Outlined.SkipNext, contentDescription = "Next sentence")
+        }
+        Spacer(Modifier.weight(1f))
+        val label = speed.speedLabel()
+        TextButton(
+            onClick = onSpeed,
+            modifier = Modifier.widthIn(min = 64.dp).semantics { contentDescription = "Speed $label, change" },
+        ) {
+            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+        }
+    }
+}
+
+private fun Double.speedLabel(): String =
+    if (this % 1.0 == 0.0) "${toInt()}×" else String.format(java.util.Locale.ROOT, "%.1f×", this)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

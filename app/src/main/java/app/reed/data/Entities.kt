@@ -25,6 +25,8 @@ data class Book(
     val addedAt: Long,
     val lastOpenedAt: Long? = null,
     val isPrivate: Boolean = false,
+    /** Serialized locator of the sentence read aloud last, until the reader moves elsewhere. */
+    val listenLocator: String? = null,
 )
 
 enum class NoteKind { PASSAGE, PAGE }
@@ -74,5 +76,6 @@ data class BookWithCount(
     val addedAt: Long,
     val lastOpenedAt: Long?,
     val isPrivate: Boolean,
+    val listenLocator: String?,
     val noteCount: Int,
 )

@@ -39,8 +39,12 @@ import app.reed.reed
 import app.reed.ui.theme.Palette
 import app.reed.ui.theme.ReedTheme
 import app.reed.ui.theme.isDark
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import org.readium.adapter.pdfium.navigator.PdfiumEngineProvider
 import org.readium.r2.navigator.DecorableNavigator
@@ -100,6 +104,7 @@ class ReaderActivity : FragmentActivity() {
                     loading = loading,
                     onBack = { finish() },
                     onOpenNote = ::goTo,
+                    onListen = { model.listen { (navigator as? VisualNavigator)?.firstVisibleElementLocator() } },
                 )
             }
         }
@@ -151,8 +156,10 @@ class ReaderActivity : FragmentActivity() {
         onNavigatorReady()
     }
 
+    @OptIn(FlowPreview::class)
     private fun onNavigatorReady() {
         loading = false
+        model.settle()
         val navigator = navigator ?: return
         (navigator as? OverflowableNavigator)?.let {
             navigator.addInputListener(DirectionalNavigationAdapter(it, animatedTransition = true))
@@ -183,6 +190,28 @@ class ReaderActivity : FragmentActivity() {
                     }
                     launch {
                         model.settings.collect { navigator.submitPreferences(it.toEpubPreferences(it.theme.resolveNow())) }
+                    }
+                    launch {
+                        combine(model.listening, model.settings) { listening, settings ->
+                            spokenDecorations(listening?.sentence, settings.theme.resolveNow().isDark)
+                        }.collect { navigator.applyDecorations(it, SPOKEN_GROUP) }
+                    }
+                    // Pages turn with the voice; at most one move per beat keeps it smooth.
+                    launch {
+                        // Back from the lock screen or another app: catch up with where the voice got to.
+                        model.listenPositionToShow()?.let {
+                            model.settle()
+                            navigator.go(it, animated = false)
+                        }
+                        model.listening
+                            .map { it?.takeIf { listening -> listening.playing }?.word }
+                            .filterNotNull()
+                            .distinctUntilChanged()
+                            .sample(800)
+                            .collect {
+                                model.settle()
+                                navigator.go(it, animated = false)
+                            }
                     }
                 }
             }

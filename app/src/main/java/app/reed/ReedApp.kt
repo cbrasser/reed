@@ -6,6 +6,7 @@ import android.content.Context
 import app.reed.data.Library
 import app.reed.data.ReedDatabase
 import app.reed.data.SettingsStore
+import app.reed.listen.ReadAloud
 import app.reed.privacy.PrivacyLock
 import app.reed.sync.NotesSync
 import app.reed.sync.SyncStore
@@ -18,6 +19,8 @@ class ReedApp : Application() {
         private set
     lateinit var sync: SyncStore
         private set
+    lateinit var readAloud: ReadAloud
+        private set
     val privacyLock = PrivacyLock()
 
     override fun onCreate() {
@@ -26,6 +29,7 @@ class ReedApp : Application() {
         sync = SyncStore(this)
         library = Library(this, ReedDatabase.create(this)) { NotesSync.schedule(this) }
         settings = SettingsStore(this)
+        readAloud = ReadAloud(this, library, settings)
         // Catch up on anything that didn't get sent last time (does nothing when sending is off).
         NotesSync.schedule(this, delaySeconds = 5)
         NotesSync.scheduleRegular(this)

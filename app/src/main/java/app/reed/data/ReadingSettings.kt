@@ -59,12 +59,20 @@ class SettingsStore(private val context: Context) {
         val lineSpacing = stringPreferencesKey("lineSpacing")
         val margins = stringPreferencesKey("margins")
         val sort = stringPreferencesKey("librarySort")
+        val listenSpeed = doublePreferencesKey("listenSpeed")
     }
 
     val reading: Flow<ReadingSettings> = context.store.data.map { it.toReading() }
 
     val sort: Flow<LibrarySort> = context.store.data.map { prefs ->
         prefs[Keys.sort].toEnum(LibrarySort.RECENT)
+    }
+
+    /** Read-aloud speed, 1.0 being the voice's normal pace. */
+    val listenSpeed: Flow<Double> = context.store.data.map { it[Keys.listenSpeed] ?: 1.0 }
+
+    suspend fun setListenSpeed(speed: Double) {
+        context.store.edit { it[Keys.listenSpeed] = speed }
     }
 
     suspend fun updateReading(transform: (ReadingSettings) -> ReadingSettings) {

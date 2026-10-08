@@ -1,6 +1,7 @@
 package app.reed.data
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Delete
@@ -42,6 +43,18 @@ interface BookDao {
     @Query("UPDATE books SET lastLocator = :locator, progression = :progression WHERE id = :id")
     suspend fun updatePosition(id: Long, locator: String, progression: Double)
 
+    /** Read aloud has reached this sentence; the book's position follows it. */
+    @Query(
+        """
+        UPDATE books SET listenLocator = :locator, lastLocator = :locator, progression = COALESCE(:progression, progression)
+        WHERE id = :id
+        """,
+    )
+    suspend fun updateListenPosition(id: Long, locator: String, progression: Double?)
+
+    @Query("UPDATE books SET listenLocator = NULL WHERE id = :id")
+    suspend fun clearListenPosition(id: Long)
+
     @Query("UPDATE books SET lastOpenedAt = :at WHERE id = :id")
     suspend fun markOpened(id: Long, at: Long)
 
@@ -70,7 +83,12 @@ interface NoteDao {
     suspend fun delete(note: Note)
 }
 
-@Database(entities = [Book::class, Note::class], version = 1, exportSchema = true)
+@Database(
+    entities = [Book::class, Note::class],
+    version = 2,
+    exportSchema = true,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
+)
 abstract class ReedDatabase : RoomDatabase() {
     abstract fun books(): BookDao
     abstract fun notes(): NoteDao
