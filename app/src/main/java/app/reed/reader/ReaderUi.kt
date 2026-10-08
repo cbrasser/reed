@@ -40,6 +40,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -92,7 +93,8 @@ fun ReaderOverlay(
 
     LaunchedEffect(model) {
         model.messages.collect { message ->
-            val result = snackbar.showSnackbar(message.text, actionLabel = message.action)
+            // With an action Material keeps the message up until it's dismissed; nothing here needs that.
+            val result = snackbar.showSnackbar(message.text, actionLabel = message.action, duration = SnackbarDuration.Long)
             if (result == SnackbarResult.ActionPerformed) message.onAction?.invoke()
         }
     }

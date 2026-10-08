@@ -123,8 +123,9 @@ class ReaderViewModel(
         session?.let { return it }
         val book = library.book(bookId) ?: return null
         val publication = library.open(book) ?: return null
-        val initial = jumpTo?.toLocator() ?: book.lastLocator?.toLocator()
         if (jumpTo == null) resumeAt = book.listenLocator?.toLocator()
+        // A sentence read aloud is only kept while its page is the one being read, so it can open there.
+        val initial = jumpTo?.toLocator() ?: resumeAt ?: book.lastLocator?.toLocator()
         library.markOpened(bookId)
         jumpNoteId?.let { flash(it, delayMs = 700) }
         return ReaderSession(book, publication, initial).also { session = it }
@@ -149,6 +150,9 @@ class ReaderViewModel(
         }
     }
 
+    /** Where reading aloud is, unless the reader has since turned elsewhere. */
+    fun listenPositionToShow(): Locator? = listening.value?.sentence?.takeIf { resumeAt != null }
+
     /** The page is about to move for a reason other than the reader turning it. */
     fun settle(ms: Long = 1200) {
         settleUntil = SystemClock.elapsedRealtime() + ms
@@ -162,7 +166,7 @@ class ReaderViewModel(
         chromeVisible.value = false
         viewModelScope.launch {
             if (readAloud.isReading(bookId)) {
-                if (resumeAt == null) pageStart()?.let(readAloud::go)
+                if (resumeAt == null) pageStart()?.let { readAloud.go(it) }
                 readAloud.play()
             } else {
                 readAloud.start(bookId, resumeAt ?: pageStart() ?: currentLocator.value)

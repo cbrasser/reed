@@ -198,6 +198,11 @@ class ReaderActivity : FragmentActivity() {
                     }
                     // Pages turn with the voice; at most one move per beat keeps it smooth.
                     launch {
+                        // Back from the lock screen or another app: catch up with where the voice got to.
+                        model.listenPositionToShow()?.let {
+                            model.settle()
+                            navigator.go(it, animated = false)
+                        }
                         model.listening
                             .map { it?.takeIf { listening -> listening.playing }?.word }
                             .filterNotNull()

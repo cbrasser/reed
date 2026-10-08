@@ -51,6 +51,8 @@ import org.readium.navigator.media.tts.android.AndroidTtsPreferences
 import org.readium.r2.shared.ExperimentalReadiumApi
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
+import org.readium.r2.shared.publication.services.content.Content
+import org.readium.r2.shared.publication.services.content.content
 import org.readium.r2.shared.util.getOrElse
 import timber.log.Timber
 import java.io.File
@@ -142,6 +144,7 @@ class ReadAloud(
         if (!hasEngine()) return fail(Event.NoEngine)
         val book = library.book(bookId) ?: return false
         val publication = library.open(book) ?: return fail(Event.Unreadable)
+        val start = from?.let { locate(publication, it) }
         val factory = TtsNavigatorFactory(app, publication, metadataProvider = metadataFor(book))
         if (factory == null) {
             publication.close()
@@ -152,7 +155,7 @@ class ReadAloud(
                 listener = object : TtsNavigator.Listener {
                     override fun onStopRequested() = stop()
                 },
-                initialLocator = from,
+                initialLocator = start,
                 initialPreferences = AndroidTtsPreferences(speed = settings.listenSpeed.first()),
             )
         }
@@ -179,8 +182,48 @@ class ReadAloud(
             stop()
             return fail(Event.Failed)
         }
+        if (from != null && start != null) skipToSentence(navigator, from, start)
         navigator.play()
         true
+    }
+
+    /**
+     * Readium starts at the paragraph holding [target]; step through its sentences to the one
+     * that was being read, or stay at the paragraph's start if it isn't there any more.
+     */
+    private suspend fun skipToSentence(navigator: AndroidTtsNavigator, target: Locator, paragraph: Locator) {
+        val sentence = target.text.highlight?.collapsed()?.takeIf { it.isNotEmpty() } ?: return
+        // A position from the page view holds its whole paragraph, which starts where Readium did.
+        if (sentence.startsWith(navigator.location.value.utterance.collapsed())) return
+        for (step in 0 until MAX_SKIPPED_SENTENCES) {
+            val here = navigator.location.value
+            if (here.utterance.collapsed() == sentence) return
+            if (here.href != target.href || !navigator.hasNextUtterance()) break
+            navigator.skipToNextUtterance()
+            withTimeoutOrNull(1_000) { navigator.location.first { it != here } } ?: break
+        }
+        navigator.go(paragraph)
+    }
+
+    /**
+     * The paragraph holding [from], found by its text. A position from the page view names its
+     * paragraph with a CSS path from the WebView, which doesn't always match the document Readium
+     * reads aloud from (some books nest paragraphs in links, and the two parsers disagree).
+     */
+    private suspend fun locate(publication: Publication, from: Locator): Locator {
+        val wanted = from.text.highlight?.collapsed()?.take(200)?.takeIf { it.length >= 3 } ?: return from
+        fun Content.Element.holdsWanted() = (this as? Content.TextualElement)?.text?.collapsed()?.contains(wanted) == true
+        publication.content(from)?.iterator()?.let { here ->
+            if (here.hasNext() && here.next().holdsWanted()) return from
+        }
+        val chapter = publication.content(from.copy(locations = Locator.Locations(), text = Locator.Text()))?.iterator()
+            ?: return from
+        while (chapter.hasNext()) {
+            val element = chapter.next()
+            if (element.locator.href != from.href) break
+            if (element.holdsWanted()) return element.locator
+        }
+        return from
     }
 
     fun play() {
@@ -199,8 +242,9 @@ class ReadAloud(
         current.value?.navigator?.skipToPreviousUtterance()
     }
 
-    fun go(locator: Locator) {
-        current.value?.navigator?.go(locator)
+    suspend fun go(locator: Locator) {
+        val session = current.value ?: return
+        session.navigator.go(locate(session.publication, locator))
     }
 
     fun setSpeed(speed: Double) {
@@ -299,8 +343,11 @@ class ReadAloud(
     private companion object {
         const val WAKE_TIMEOUT_MS = 10 * 60 * 1000L
         const val ENGINE_TIMEOUT_MS = 15_000L
+        const val MAX_SKIPPED_SENTENCES = 60
     }
 }
+
+private fun String.collapsed() = replace(Regex("\\s+"), " ").trim()
 
 /** Speeds offered by the reader's speed button, in order. */
 val ListenSpeeds = listOf(0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0)
