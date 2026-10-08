@@ -9,7 +9,7 @@ import org.readium.r2.shared.publication.Locator
 /** Settings that reflow the text, so the page has to be found again afterwards. */
 fun ReadingSettings.reflowsFrom(other: ReadingSettings): Boolean =
     typeface != other.typeface || fontScale != other.fontScale ||
-        lineSpacing != other.lineSpacing || margins != other.margins
+        lineSpacing != other.lineSpacing || margins != other.margins || layout != other.layout
 
 /**
  * The first words on screen, as a locator Readium finds again by its text. Readium itself keeps
@@ -33,8 +33,36 @@ suspend fun EpubNavigatorFragment.firstVisibleWords(): Locator? {
     )
 }
 
-// Finds the first character laid out on the visible page (paginated columns scroll sideways, so
-// text before the page sits left of the viewport) and returns the words starting there.
+/** Where the sentence being read aloud is, relative to the screen. */
+enum class SpokenPlacement { NONE, ABOVE, VISIBLE, RUNS_OFF, BELOW }
+
+@OptIn(ExperimentalReadiumApi::class)
+suspend fun EpubNavigatorFragment.spokenPlacement(): SpokenPlacement {
+    val result = evaluateJavascript(SPOKEN_PLACEMENT)?.trim('"') ?: return SpokenPlacement.NONE
+    return SpokenPlacement.entries.firstOrNull { it.name == result } ?: SpokenPlacement.NONE
+}
+
+// The spoken-sentence decoration is drawn as one box per line; their extent says where it is.
+private const val SPOKEN_PLACEMENT = """
+(function () {
+  var boxes = document.querySelectorAll('.reed-spoken');
+  if (!boxes.length) return 'NONE';
+  var w = window.innerWidth, h = window.innerHeight;
+  var top = Infinity, bottom = -Infinity, left = Infinity, right = -Infinity;
+  boxes.forEach(function (b) {
+    var r = b.getBoundingClientRect();
+    top = Math.min(top, r.top); bottom = Math.max(bottom, r.bottom);
+    left = Math.min(left, r.left); right = Math.max(right, r.right);
+  });
+  if (bottom <= 0 || right <= 0) return 'ABOVE';
+  if (top >= h || left >= w) return 'BELOW';
+  if (bottom > h || right > w) return 'RUNS_OFF';
+  return 'VISIBLE';
+})()
+"""
+
+// Finds the first character laid out on screen and returns the words starting there. Text before
+// the screen sits left of it in pages (columns scroll sideways) and above it when scrolling.
 private const val FIRST_VISIBLE_WORDS = """
 (function () {
   var width = window.innerWidth, height = window.innerHeight;
@@ -58,11 +86,12 @@ private const val FIRST_VISIBLE_WORDS = """
     var lo = 0, hi = node.data.length - 1;
     while (lo < hi) {
       var mid = (lo + hi) >> 1, r = rectAt(node, mid);
-      if (r && r.right <= 0) lo = mid + 1; else hi = mid;
+      if (r && (r.right <= 0 || r.bottom <= 0)) lo = mid + 1; else hi = mid;
     }
     var start = lo;
     while (start > 0 && /\S/.test(node.data[start - 1])) start--;
-    if (start < lo && rectAt(node, start) && rectAt(node, start).right <= 0) start = lo;
+    var first = rectAt(node, start);
+    if (start < lo && first && (first.right <= 0 || first.bottom <= 0)) start = lo;
     var text = node.data;
     return JSON.stringify({
       before: text.slice(Math.max(0, start - 40), start),

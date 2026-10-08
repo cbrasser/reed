@@ -44,7 +44,7 @@ Your own words are always set in graphite, the book's in ink, so you can tell th
 - Tap the headphones to have the book read aloud, sentence by sentence; pages turn with the voice and a dotted line marks the sentence being read.
 - Keeps going with the screen off or the book closed, with controls in the notification, on the lock screen and on headphones.
 - Remembers where it stopped: play again and it picks up at that sentence, or at the top of the page you've turned to.
-- Uses the phone's speech engine and the voice for the book's language. EPUB only.
+- Reed's own voices for German and English, downloaded once (with progress) the first time a book needs one, and run on the phone. Otherwise the phone's speech engine. EPUB only.
 - If a book declares the wrong language, change it in the book's options (long-press in the library); that also fixes its hyphenation and the dictation default.
 
 **Every note, in context**
@@ -94,13 +94,9 @@ Every release is signed with the same key, so updates install over each other an
 
 Reed listens through Android's speech-recognition service. If your phone has none (GrapheneOS, LineageOS without Google), install [FUTO Voice Input](https://voiceinput.futo.org/): Reed opens its "speak now" screen and drops the text into your note, fully on-device, in English and German.
 
-### Reading aloud on phones without Google
+### Voices for reading aloud
 
-Reed reads with Android's text-to-speech engine. Without Google's, install [SherpaTTS](https://f-droid.org/packages/org.woheller69.ttsengine/) from F-Droid for natural, fully on-device voices:
-
-1. In SherpaTTS, download a voice for each language you read (it keeps one per language). `en_GB-cori-high` and `de_DE-thorsten-high` are good places to start.
-2. Tick **Apply system settings (speed / pitch)**, or Reed's speed button won't change anything.
-3. In Android Settings › Accessibility › Text-to-speech output, choose SherpaTTS as the preferred engine.
+Reed brings its own voices ([Piper](https://github.com/rhasspy/piper) models, run with [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)): Thorsten for German and Cori for English, about 116 MB each. The first time a book in one of those languages is read aloud and the phone has no voice for it, Reed offers to download it and starts reading when it's ready. Library menu › Read-aloud voices lists them, to download one ahead of time or delete it. A downloaded voice is preferred over the phone's own engine; other languages use the phone's engine. Reed's voices need a 64-bit ARM phone.
 
 ## Formats
 
@@ -118,7 +114,7 @@ DRM-protected books can't be opened.
 JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradlew :app:assembleDebug
 ```
 
-Kotlin, Jetpack Compose and Material 3, with the [Readium Kotlin toolkit](https://github.com/readium/kotlin-toolkit) for rendering, Room for storage and Android's `SpeechRecognizer` for dictation. Requires JDK 21 and the Android SDK (compileSdk 37). The design system is documented in [`DESIGN.md`](DESIGN.md).
+Kotlin, Jetpack Compose and Material 3, with the [Readium Kotlin toolkit](https://github.com/readium/kotlin-toolkit) for rendering, Room for storage, Android's `SpeechRecognizer` for dictation and [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) for Reed's voices (its AAR is fetched and checksum-verified by the `fetchSherpa` Gradle task on the first build). Requires JDK 21 and the Android SDK (compileSdk 37). The design system is documented in [`DESIGN.md`](DESIGN.md).
 
 ### Releasing
 

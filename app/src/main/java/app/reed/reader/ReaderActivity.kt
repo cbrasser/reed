@@ -5,6 +5,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
@@ -32,6 +34,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.reed.data.BookFormat
 import app.reed.data.Note
+import app.reed.data.PageLayout
 import app.reed.data.ReadingSettings
 import app.reed.data.ReadingTheme
 import app.reed.data.toLocator
@@ -62,6 +65,7 @@ import org.readium.r2.navigator.OverflowableNavigator
 import org.readium.r2.navigator.pdf.PdfNavigatorFactory
 import org.readium.r2.navigator.util.DirectionalNavigationAdapter
 import org.readium.r2.shared.ExperimentalReadiumApi
+import org.readium.r2.shared.publication.Locator
 
 @OptIn(ExperimentalReadiumApi::class)
 class ReaderActivity : FragmentActivity() {
@@ -80,6 +84,36 @@ class ReaderActivity : FragmentActivity() {
 
     private val navigator: VisualNavigator?
         get() = supportFragmentManager.findFragmentByTag(NAVIGATOR_TAG) as? VisualNavigator
+
+    private val idle = Handler(Looper.getMainLooper())
+    private val letScreenSleep = Runnable { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+
+    /**
+     * Reading is looking without touching, which Android takes for idle and dims. The screen
+     * stays on while the reader is in front and gets touched now and then; after a long while
+     * without a touch it may sleep again, in case the reader has.
+     */
+    private fun stayAwake() {
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        idle.removeCallbacks(letScreenSleep)
+        idle.postDelayed(letScreenSleep, AWAKE_WITHOUT_TOUCH_MS)
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        stayAwake()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        stayAwake()
+    }
+
+    override fun onPause() {
+        idle.removeCallbacks(letScreenSleep)
+        letScreenSleep.run()
+        super.onPause()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val session = model.session
@@ -108,7 +142,7 @@ class ReaderActivity : FragmentActivity() {
                     loading = loading,
                     onBack = { finish() },
                     onOpenNote = ::goTo,
-                    onListen = { model.listen { (navigator as? VisualNavigator)?.firstVisibleElementLocator() } },
+                    onListen = { model.listen(::pageStart) },
                 )
             }
         }
@@ -164,6 +198,10 @@ class ReaderActivity : FragmentActivity() {
     private fun onNavigatorReady() {
         loading = false
         model.settle()
+        model.attachPage(::pageStart) {
+            (navigator as? EpubNavigatorFragment)?.spokenPlacement()
+                ?.let { it == SpokenPlacement.VISIBLE || it == SpokenPlacement.RUNS_OFF } == true
+        }
         val navigator = navigator ?: return
         (navigator as? OverflowableNavigator)?.let {
             navigator.addInputListener(DirectionalNavigationAdapter(it, animatedTransition = true))
@@ -224,6 +262,14 @@ class ReaderActivity : FragmentActivity() {
                             .distinctUntilChanged()
                             .sample(800)
                             .collect {
+                                if (model.holdFollow) return@collect
+                                // Scrolling, move only once the sentence runs off the screen; a page is
+                                // turned by Readium only when the word is on the next one.
+                                if (model.settings.value.layout == PageLayout.SCROLL &&
+                                    navigator.spokenPlacement() == SpokenPlacement.VISIBLE
+                                ) {
+                                    return@collect
+                                }
                                 model.settle()
                                 navigator.go(it, animated = false)
                             }
@@ -271,6 +317,14 @@ class ReaderActivity : FragmentActivity() {
         }
     }
 
+    /**
+     * Where reading aloud starts on this page: its first words (exact, unlike Readium's first
+     * visible element, which in some books is the whole chapter).
+     */
+    private suspend fun pageStart(): Locator? =
+        (navigator as? EpubNavigatorFragment)?.firstVisibleWords()
+            ?: (navigator as? VisualNavigator)?.firstVisibleElementLocator()
+
     private fun goTo(note: Note) {
         val locator = note.locator.toLocator() ?: return
         navigator?.go(locator, animated = false)
@@ -317,6 +371,7 @@ class ReaderActivity : FragmentActivity() {
         override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
             menu.add(Menu.NONE, MENU_NOTE, 0, "Note").setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
             menu.add(Menu.NONE, MENU_COPY, 1, android.R.string.copy).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+            menu.add(Menu.NONE, MENU_LISTEN, 2, "Read aloud").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
             return true
         }
 
@@ -329,6 +384,11 @@ class ReaderActivity : FragmentActivity() {
                     val selection = selectable.currentSelection() ?: return@launch
                     selectable.clearSelection()
                     model.startPassageNote(selection.locator)
+                }
+                MENU_LISTEN -> lifecycleScope.launch {
+                    val selection = selectable.currentSelection() ?: return@launch
+                    selectable.clearSelection()
+                    model.listenFrom(selection.locator)
                 }
                 MENU_COPY -> lifecycleScope.launch {
                     val text = selectable.currentSelection()?.locator?.text?.highlight ?: return@launch
@@ -352,6 +412,8 @@ class ReaderActivity : FragmentActivity() {
         private const val NAVIGATOR_TAG = "navigator"
         private const val MENU_NOTE = 0x5eed
         private const val MENU_COPY = 0x5eee
+        private const val MENU_LISTEN = 0x5eef
+        private const val AWAKE_WITHOUT_TOUCH_MS = 10 * 60 * 1000L
 
         fun intent(context: Context, bookId: Long, locator: String? = null, noteId: Long? = null): Intent =
             Intent(context, ReaderActivity::class.java)

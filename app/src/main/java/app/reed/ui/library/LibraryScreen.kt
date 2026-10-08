@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.MoreVert
@@ -98,6 +99,7 @@ fun LibraryScreen(
     onUnlock: () -> Unit,
     onLock: () -> Unit,
     onSendNotes: () -> Unit,
+    onVoices: () -> Unit,
     onSetPrivate: (BookWithCount, Boolean) -> Unit,
     onSetLanguage: (BookWithCount, String) -> Unit,
     onRemove: (BookWithCount) -> Unit,
@@ -154,6 +156,7 @@ fun LibraryScreen(
                     onUnlock = onUnlock,
                     onLock = onLock,
                     onSendNotes = onSendNotes,
+                    onVoices = onVoices,
                     showLibraryActions = !isEmpty,
                 )
             }
@@ -280,6 +283,7 @@ private fun LibraryTopBar(
     onUnlock: () -> Unit,
     onLock: () -> Unit,
     onSendNotes: () -> Unit,
+    onVoices: () -> Unit,
     showLibraryActions: Boolean,
 ) {
     var sortOpen by remember { mutableStateOf(false) }
@@ -336,6 +340,14 @@ private fun LibraryTopBar(
                             },
                         )
                     }
+                    DropdownMenuItem(
+                        text = { Text("Read-aloud voices") },
+                        leadingIcon = { Icon(Icons.Outlined.RecordVoiceOver, contentDescription = null) },
+                        onClick = {
+                            menuOpen = false
+                            onVoices()
+                        },
+                    )
                     DropdownMenuItem(
                         text = { Text("Send notes to Nextcloud") },
                         leadingIcon = { Icon(Icons.Outlined.CloudUpload, contentDescription = null) },

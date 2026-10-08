@@ -16,7 +16,9 @@ import app.reed.data.NoteKind
 import app.reed.data.ReadingSettings
 import app.reed.data.serialize
 import app.reed.data.toLocator
+import app.reed.listen.CatalogVoice
 import app.reed.listen.ListenSpeeds
+import app.reed.listen.VoiceDownload
 import app.reed.listen.ReadAloud
 import app.reed.listen.forBook
 import app.reed.reed
@@ -27,6 +29,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
@@ -94,6 +97,17 @@ class ReaderViewModel(
 
     val listenSpeed: StateFlow<Double> = readAloud.speed
 
+    /** A voice this book needs before it can be read aloud, and its download if one is running. */
+    data class VoiceOffer(val voice: CatalogVoice, val download: VoiceDownload?)
+
+    private val offeredVoice = MutableStateFlow<CatalogVoice?>(null)
+    val voiceOffer: StateFlow<VoiceOffer?> = combine(offeredVoice, readAloud.voices.downloads) { voice, downloads ->
+        voice?.let { VoiceOffer(it, downloads[it.id]) }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Where to start once the offered voice is ready, from the last tap on Read aloud. */
+    private var listenWhenReady: (suspend () -> Locator?)? = null
+
     private val messageChannel = Channel<ReaderMessage>(Channel.BUFFERED)
     val messages = messageChannel.receiveAsFlow()
 
@@ -108,6 +122,16 @@ class ReaderViewModel(
     /** Page changes until then come from following the voice, opening the book or relayout, not the reader. */
     private var settleUntil = 0L
 
+    /** The first words on screen, from the reader view. */
+    private var pageStart: (suspend () -> Locator?)? = null
+    /** Whether the sentence being read is still (at least partly) on screen. */
+    private var spokenOnScreen: (suspend () -> Boolean)? = null
+    private var turnedAt = 0L
+    private var continueHere: Job? = null
+
+    /** The reader just turned the page while listening; the page shouldn't jump back to the voice yet. */
+    val holdFollow: Boolean get() = SystemClock.elapsedRealtime() - turnedAt < HOLD_FOLLOW_MS
+
     init {
         viewModelScope.launch {
             currentLocator.filterNotNull().debounce(600).collect { library.savePosition(bookId, it) }
@@ -116,6 +140,17 @@ class ReaderViewModel(
         // The microphone shouldn't hear the book: a note sheet pauses the voice.
         draft.filterNotNull().onEach { if (listening.value?.playing == true) readAloud.pause() }.launchIn(viewModelScope)
         readAloud.events.onEach(::onReadAloudEvent).launchIn(viewModelScope)
+        // The voice finished downloading: start reading, as the reader asked before it had to wait.
+        readAloud.voices.installed.onEach { installed ->
+            val voice = offeredVoice.value ?: return@onEach
+            if (voice.id !in installed) return@onEach
+            offeredVoice.value = null
+            listenWhenReady?.let { listenWhenReady = null; listen(it) }
+        }.launchIn(viewModelScope)
+        readAloud.voices.failures.onEach { voice ->
+            if (voice != offeredVoice.value) return@onEach
+            messageChannel.send(ReaderMessage("Couldn't download the ${voice.languageName} voice", action = "Try again", onAction = ::downloadVoice))
+        }.launchIn(viewModelScope)
     }
 
     /** Opens the publication once; survives configuration changes. */
@@ -139,6 +174,12 @@ class ReaderViewModel(
     }
 
     private fun trackListenPage(page: Locator) {
+        if (listening.value?.playing == true) {
+            val turned = listenPage?.let { !page.samePlace(it) } == true && SystemClock.elapsedRealtime() >= settleUntil
+            listenPage = page
+            if (turned) continueFromPage()
+            return
+        }
         if (resumeAt == null) return
         val anchor = listenPage
         if (anchor == null || listening.value?.playing == true || SystemClock.elapsedRealtime() < settleUntil) {
@@ -153,6 +194,50 @@ class ReaderViewModel(
     /** Where reading aloud is, unless the reader has since turned elsewhere. */
     fun listenPositionToShow(): Locator? = listening.value?.sentence?.takeIf { resumeAt != null }
 
+    /**
+     * Turning the page while listening says "read from here": once the reader settles on a page,
+     * the voice carries on from its first words.
+     */
+    private fun continueFromPage() {
+        turnedAt = SystemClock.elapsedRealtime()
+        continueHere?.cancel()
+        continueHere = viewModelScope.launch {
+            delay(CONTINUE_AFTER_TURN_MS)
+            // A small scroll that keeps the sentence in view isn't a new place to read from.
+            if (spokenOnScreen?.invoke() == true) return@launch
+            // A fling keeps moving after the finger lifts: wait for the page to come to rest.
+            var words = pageStart?.invoke() ?: return@launch
+            for (check in 0 until 10) {
+                delay(250)
+                val again = pageStart?.invoke() ?: return@launch
+                if (again.text.highlight == words.text.highlight) break
+                words = again
+                turnedAt = SystemClock.elapsedRealtime()
+            }
+            if (spokenOnScreen?.invoke() == true) return@launch
+            readAloud.go(words)
+            turnedAt = SystemClock.elapsedRealtime()
+        }
+    }
+
+    fun attachPage(start: suspend () -> Locator?, spokenVisible: suspend () -> Boolean) {
+        pageStart = start
+        spokenOnScreen = spokenVisible
+    }
+
+    /** Reads aloud from a selected passage, the reader's way of saying where to start. */
+    fun listenFrom(selection: Locator) {
+        chromeVisible.value = false
+        viewModelScope.launch {
+            if (readAloud.isReading(bookId)) {
+                readAloud.go(selection)
+                readAloud.play()
+            } else {
+                readAloud.start(bookId, selection)
+            }
+        }
+    }
+
     /** The page is about to move for a reason other than the reader turning it. */
     fun settle(ms: Long = 1200) {
         settleUntil = SystemClock.elapsedRealtime() + ms
@@ -164,6 +249,7 @@ class ReaderViewModel(
      */
     fun listen(pageStart: suspend () -> Locator?) {
         chromeVisible.value = false
+        listenWhenReady = pageStart
         viewModelScope.launch {
             if (readAloud.isReading(bookId)) {
                 if (resumeAt == null) pageStart()?.let { readAloud.go(it) }
@@ -172,6 +258,20 @@ class ReaderViewModel(
                 readAloud.start(bookId, resumeAt ?: pageStart() ?: currentLocator.value)
             }
         }
+    }
+
+    fun downloadVoice() {
+        offeredVoice.value?.let(readAloud.voices::download)
+    }
+
+    fun cancelVoiceDownload() {
+        offeredVoice.value?.let(readAloud.voices::cancel)
+    }
+
+    fun dismissVoiceOffer() {
+        cancelVoiceDownload()
+        offeredVoice.value = null
+        listenWhenReady = null
     }
 
     fun pauseListening() = readAloud.pause()
@@ -206,10 +306,16 @@ class ReaderViewModel(
                 action = "Install",
                 onAction = { openSystem(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) },
             )
+            is ReadAloud.Event.NeedsVoice -> {
+                if (event.bookId != bookId) return
+                offeredVoice.value = event.voice
+                chromeVisible.value = true
+                return
+            }
             is ReadAloud.Event.FallbackVoice -> ReaderMessage(
-                "No ${event.language} voice installed, reading with the default voice",
-                action = "Install",
-                onAction = { openSystem(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) },
+                "No ${event.language} voice on this phone, reading with the default voice",
+                action = "Settings",
+                onAction = { openSystem(Intent(TTS_SETTINGS)) },
             )
             ReadAloud.Event.NeedsNetwork -> ReaderMessage("This voice needs an internet connection")
             ReadAloud.Event.Failed -> ReaderMessage("Reading aloud stopped")
@@ -217,8 +323,11 @@ class ReaderViewModel(
         messageChannel.send(message)
     }
 
+    /** Opens [intent], or Android's speech settings when nothing on the phone handles it. */
     private fun openSystem(intent: Intent) {
-        runCatching { getApplication<Application>().startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        val app = getApplication<Application>()
+        val target = intent.takeIf { it.resolveActivity(app.packageManager) != null } ?: Intent(TTS_SETTINGS)
+        runCatching { app.startActivity(target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     }
 
     private fun chapterAt(locator: Locator): String? = session?.publication?.chapterTitle(locator.href)
@@ -383,6 +492,8 @@ private fun Locator.samePlace(other: Locator): Boolean {
 }
 
 private const val TTS_SETTINGS = "com.android.settings.TTS_SETTINGS"
+private const val CONTINUE_AFTER_TURN_MS = 900L
+private const val HOLD_FOLLOW_MS = 2_500L
 
 private fun Locator.samePage(other: Locator): Boolean {
     val a = locations.position

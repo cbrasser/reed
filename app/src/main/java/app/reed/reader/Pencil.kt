@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.toArgb
 import app.reed.data.Note
 import app.reed.data.NoteKind
 import app.reed.data.ReadingSettings
+import app.reed.data.PageLayout
 import app.reed.data.ReadingTheme
 import app.reed.data.Typeface
 import app.reed.data.toLocator
@@ -188,8 +189,8 @@ fun ReadingSettings.toEpubPreferences(resolved: ReadingTheme, language: String?)
         publisherStyles = false,
         // Keep the book's own alignment (centred headings, set-right datelines); hyphenate to close justified gaps.
         hyphens = true,
+        scroll = layout == PageLayout.SCROLL,
         // The book's own declaration can be wrong; Reed's (changeable in the book's options) wins.
         language = language?.let { Language(it) },
-        scroll = false,
     )
 }

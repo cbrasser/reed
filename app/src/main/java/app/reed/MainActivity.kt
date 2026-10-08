@@ -34,6 +34,7 @@ import app.reed.ui.library.LibraryScreen
 import app.reed.ui.library.LibraryViewModel
 import app.reed.ui.notes.NotesScreen
 import app.reed.ui.sync.SyncScreen
+import app.reed.ui.voices.VoicesScreen
 import app.reed.ui.theme.ReedTheme
 
 class MainActivity : FragmentActivity() {
@@ -64,11 +65,17 @@ class MainActivity : FragmentActivity() {
                     }
 
                     var sendNotes by rememberSaveable { mutableStateOf(false) }
+                    var voices by rememberSaveable { mutableStateOf(false) }
                     BackHandler(enabled = notesBookId != null) { notesBookId = null }
                     BackHandler(enabled = sendNotes) { sendNotes = false }
+                    BackHandler(enabled = voices) { voices = false }
 
                     if (sendNotes) {
                         SyncScreen(onBack = { sendNotes = false })
+                        return@Surface
+                    }
+                    if (voices) {
+                        VoicesScreen(onBack = { voices = false })
                         return@Surface
                     }
 
@@ -89,6 +96,7 @@ class MainActivity : FragmentActivity() {
                                 onUnlock = { unlock() },
                                 onLock = libraryModel::lockPrivate,
                                 onSendNotes = { sendNotes = true },
+                                onVoices = { voices = true },
                                 onSetPrivate = { book, private -> libraryModel.setPrivate(book, private) },
                                 onSetLanguage = { book, language -> libraryModel.setLanguage(book, language) },
                                 onRemove = { libraryModel.remove(it) },
