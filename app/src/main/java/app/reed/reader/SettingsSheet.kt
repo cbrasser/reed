@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.reed.data.LineSpacing
 import app.reed.data.Margins
+import app.reed.data.PageLayout
 import app.reed.data.ReadingSettings
 import app.reed.data.ReadingTheme
 import app.reed.data.Typeface
@@ -142,6 +143,20 @@ fun SettingsSheet(
                             colors = reedSegmentedColors(),
                             icon = {},
                             label = { Text(margin.label) },
+                        )
+                    }
+                }
+            }
+            Setting("Layout") {
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    PageLayout.entries.forEachIndexed { i, layout ->
+                        SegmentedButton(
+                            selected = settings.layout == layout,
+                            onClick = { onChange { it.copy(layout = layout) } },
+                            shape = SegmentedButtonDefaults.itemShape(i, PageLayout.entries.size),
+                            colors = reedSegmentedColors(),
+                            icon = {},
+                            label = { Text(layout.label) },
                         )
                     }
                 }

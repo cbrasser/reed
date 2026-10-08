@@ -29,6 +29,12 @@ enum class Margins(val label: String, val pageMargins: Double) {
     WIDE("Wide", 1.8),
 }
 
+/** Turn pages sideways, or scroll each chapter as one long column. */
+enum class PageLayout(val label: String) {
+    PAGES("Pages"),
+    SCROLL("Scroll"),
+}
+
 enum class LibrarySort(val label: String) {
     RECENT("Recent"),
     TITLE("Title"),
@@ -41,6 +47,7 @@ data class ReadingSettings(
     val fontScale: Double = 1.0,
     val lineSpacing: LineSpacing = LineSpacing.NORMAL,
     val margins: Margins = Margins.NORMAL,
+    val layout: PageLayout = PageLayout.PAGES,
 ) {
     companion object {
         const val MIN_SCALE = 0.8
@@ -58,6 +65,7 @@ class SettingsStore(private val context: Context) {
         val fontScale = doublePreferencesKey("fontScale")
         val lineSpacing = stringPreferencesKey("lineSpacing")
         val margins = stringPreferencesKey("margins")
+        val layout = stringPreferencesKey("layout")
         val sort = stringPreferencesKey("librarySort")
         val listenSpeed = doublePreferencesKey("listenSpeed")
     }
@@ -83,6 +91,7 @@ class SettingsStore(private val context: Context) {
             prefs[Keys.fontScale] = next.fontScale
             prefs[Keys.lineSpacing] = next.lineSpacing.name
             prefs[Keys.margins] = next.margins.name
+            prefs[Keys.layout] = next.layout.name
         }
     }
 
@@ -96,6 +105,7 @@ class SettingsStore(private val context: Context) {
         fontScale = this[Keys.fontScale] ?: 1.0,
         lineSpacing = this[Keys.lineSpacing].toEnum(LineSpacing.NORMAL),
         margins = this[Keys.margins].toEnum(Margins.NORMAL),
+        layout = this[Keys.layout].toEnum(PageLayout.PAGES),
     )
 }
 

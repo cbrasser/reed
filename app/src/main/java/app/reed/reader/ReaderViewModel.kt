@@ -122,6 +122,16 @@ class ReaderViewModel(
     /** Page changes until then come from following the voice, opening the book or relayout, not the reader. */
     private var settleUntil = 0L
 
+    /** The first words on screen, from the reader view. */
+    private var pageStart: (suspend () -> Locator?)? = null
+    /** Whether the sentence being read is still (at least partly) on screen. */
+    private var spokenOnScreen: (suspend () -> Boolean)? = null
+    private var turnedAt = 0L
+    private var continueHere: Job? = null
+
+    /** The reader just turned the page while listening; the page shouldn't jump back to the voice yet. */
+    val holdFollow: Boolean get() = SystemClock.elapsedRealtime() - turnedAt < HOLD_FOLLOW_MS
+
     init {
         viewModelScope.launch {
             currentLocator.filterNotNull().debounce(600).collect { library.savePosition(bookId, it) }
@@ -164,6 +174,12 @@ class ReaderViewModel(
     }
 
     private fun trackListenPage(page: Locator) {
+        if (listening.value?.playing == true) {
+            val turned = listenPage?.let { !page.samePlace(it) } == true && SystemClock.elapsedRealtime() >= settleUntil
+            listenPage = page
+            if (turned) continueFromPage()
+            return
+        }
         if (resumeAt == null) return
         val anchor = listenPage
         if (anchor == null || listening.value?.playing == true || SystemClock.elapsedRealtime() < settleUntil) {
@@ -177,6 +193,50 @@ class ReaderViewModel(
 
     /** Where reading aloud is, unless the reader has since turned elsewhere. */
     fun listenPositionToShow(): Locator? = listening.value?.sentence?.takeIf { resumeAt != null }
+
+    /**
+     * Turning the page while listening says "read from here": once the reader settles on a page,
+     * the voice carries on from its first words.
+     */
+    private fun continueFromPage() {
+        turnedAt = SystemClock.elapsedRealtime()
+        continueHere?.cancel()
+        continueHere = viewModelScope.launch {
+            delay(CONTINUE_AFTER_TURN_MS)
+            // A small scroll that keeps the sentence in view isn't a new place to read from.
+            if (spokenOnScreen?.invoke() == true) return@launch
+            // A fling keeps moving after the finger lifts: wait for the page to come to rest.
+            var words = pageStart?.invoke() ?: return@launch
+            for (check in 0 until 10) {
+                delay(250)
+                val again = pageStart?.invoke() ?: return@launch
+                if (again.text.highlight == words.text.highlight) break
+                words = again
+                turnedAt = SystemClock.elapsedRealtime()
+            }
+            if (spokenOnScreen?.invoke() == true) return@launch
+            readAloud.go(words)
+            turnedAt = SystemClock.elapsedRealtime()
+        }
+    }
+
+    fun attachPage(start: suspend () -> Locator?, spokenVisible: suspend () -> Boolean) {
+        pageStart = start
+        spokenOnScreen = spokenVisible
+    }
+
+    /** Reads aloud from a selected passage, the reader's way of saying where to start. */
+    fun listenFrom(selection: Locator) {
+        chromeVisible.value = false
+        viewModelScope.launch {
+            if (readAloud.isReading(bookId)) {
+                readAloud.go(selection)
+                readAloud.play()
+            } else {
+                readAloud.start(bookId, selection)
+            }
+        }
+    }
 
     /** The page is about to move for a reason other than the reader turning it. */
     fun settle(ms: Long = 1200) {
@@ -432,6 +492,8 @@ private fun Locator.samePlace(other: Locator): Boolean {
 }
 
 private const val TTS_SETTINGS = "com.android.settings.TTS_SETTINGS"
+private const val CONTINUE_AFTER_TURN_MS = 900L
+private const val HOLD_FOLLOW_MS = 2_500L
 
 private fun Locator.samePage(other: Locator): Boolean {
     val a = locations.position

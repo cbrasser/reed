@@ -257,15 +257,22 @@ class ReadAloud(
 
     /**
      * Readium starts at the paragraph holding [target]; step through its sentences to the one
-     * that was being read, or stay at the paragraph's start if it isn't there any more.
+     * where [target]'s words begin (a saved sentence, the first words on screen or a selection),
+     * or stay at the paragraph's start if they aren't there.
      */
     private suspend fun skipToSentence(navigator: TtsNavigator<*, *, *, *>, target: Locator, paragraph: Locator) {
-        val sentence = target.text.highlight?.collapsed()?.takeIf { it.isNotEmpty() } ?: return
-        // A position from the page view holds its whole paragraph, which starts where Readium did.
-        if (sentence.startsWith(navigator.location.value.utterance.collapsed())) return
+        val words = target.text.highlight?.collapsed()?.takeIf { it.isNotEmpty() } ?: return
+        val opening = words.take(30)
+        fun beginsIn(sentence: String): Boolean {
+            val s = sentence.collapsed()
+            // A position from the page view holds its whole paragraph, which starts with the sentence.
+            if (s.contains(opening) || words.startsWith(s)) return true
+            // The words start near the end of this sentence and run on into the next.
+            return (maxOf(0, s.length - opening.length) until s.length - 2).any { words.startsWith(s.substring(it)) }
+        }
         for (step in 0 until MAX_SKIPPED_SENTENCES) {
             val here = navigator.location.value
-            if (here.utterance.collapsed() == sentence) return
+            if (beginsIn(here.utterance)) return
             if (here.href != target.href || !navigator.hasNextUtterance()) break
             navigator.skipToNextUtterance()
             withTimeoutOrNull(1_000) { navigator.location.first { it != here } } ?: break
@@ -310,9 +317,19 @@ class ReadAloud(
         current.value?.navigator?.skipToPreviousUtterance()
     }
 
+    /** Moves reading to the sentence where [locator]'s words begin. */
     suspend fun go(locator: Locator) {
         val session = current.value ?: return
-        session.navigator.go(locate(session.publication, locator))
+        val navigator = session.navigator
+        val wasPlaying = navigator.playback.value.playWhenReady
+        // Paused, stepping through sentences only moves a cursor; playing, each step would speak.
+        navigator.pause()
+        val paragraph = locate(session.publication, locator)
+        val before = navigator.location.value
+        navigator.go(paragraph)
+        withTimeoutOrNull(1_500) { navigator.location.first { it != before } }
+        skipToSentence(navigator, locator, paragraph)
+        if (wasPlaying) navigator.play()
     }
 
     fun setSpeed(speed: Double) {
@@ -424,7 +441,8 @@ class ReadAloud(
     private companion object {
         const val WAKE_TIMEOUT_MS = 10 * 60 * 1000L
         const val ENGINE_TIMEOUT_MS = 15_000L
-        const val MAX_SKIPPED_SENTENCES = 60
+        // Some books are one paragraph per chapter, so the sentence can be far from its "paragraph".
+        const val MAX_SKIPPED_SENTENCES = 5_000
     }
 }
 
