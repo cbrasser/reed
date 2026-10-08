@@ -201,6 +201,16 @@ class Library(
         )
     }
 
+    suspend fun saveListenPosition(bookId: Long, locator: Locator) {
+        db.books().updateListenPosition(
+            id = bookId,
+            locator = locator.serialize(),
+            progression = locator.locations.totalProgression,
+        )
+    }
+
+    suspend fun clearListenPosition(bookId: Long) = db.books().clearListenPosition(bookId)
+
     suspend fun note(id: Long): Note? = db.notes().get(id)
 
     suspend fun addNote(note: Note): Long = db.notes().insert(note).also { onNotesChanged() }

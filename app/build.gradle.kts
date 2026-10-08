@@ -111,4 +111,6 @@ dependencies {
     implementation(libs.readium.navigator)
     implementation(libs.readium.pdfium.navigator)
     implementation(libs.readium.pdfium.document)
+    implementation(libs.readium.media.tts)
+    implementation(libs.media3.session)
 }

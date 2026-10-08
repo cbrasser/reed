@@ -20,6 +20,7 @@ import org.readium.r2.navigator.preferences.Color
 import org.readium.r2.navigator.preferences.FontFamily
 import org.readium.r2.navigator.preferences.Theme
 import org.readium.r2.shared.ExperimentalReadiumApi
+import org.readium.r2.shared.publication.Locator
 import org.readium.r2.navigator.epub.css.FontStyle
 import org.readium.r2.navigator.epub.css.RsProperties
 import org.readium.r2.navigator.epub.css.Color as CssColor
@@ -32,7 +33,12 @@ data class PencilLine(@param:ColorInt val tint: Int, val doubled: Boolean) : Dec
 @Parcelize
 data class PencilMark(@param:ColorInt val tint: Int) : Decoration.Style
 
+/** Dotted graphite underline beneath the sentence being read aloud: the voice's trace, not a note. */
+@Parcelize
+data class SpokenLine(@param:ColorInt val tint: Int) : Decoration.Style
+
 const val NOTES_GROUP = "reed-notes"
+const val SPOKEN_GROUP = "reed-spoken"
 
 fun decorationId(noteId: Long, part: String) = "n$noteId-$part"
 
@@ -63,6 +69,23 @@ fun pencilTemplates(): HtmlDecorationTemplates = HtmlDecorationTemplates.default
                     background:
                         linear-gradient(var(--reed-tint), var(--reed-tint)) left bottom / 100% 1.5px no-repeat,
                         linear-gradient(var(--reed-tint), var(--reed-tint)) left calc(100% - 4px) / 100% 1.5px no-repeat;
+                }
+            """.trimIndent(),
+        ),
+    )
+    set(
+        SpokenLine::class,
+        HtmlDecorationTemplate(
+            layout = HtmlDecorationTemplate.Layout.BOXES,
+            width = HtmlDecorationTemplate.Width.WRAP,
+            element = { decoration ->
+                val style = decoration.style as SpokenLine
+                """<div class="reed-spoken" style="--reed-tint: ${cssColor(style.tint)}"></div>"""
+            },
+            stylesheet = """
+                .reed-spoken {
+                    box-sizing: border-box;
+                    background: radial-gradient(circle, var(--reed-tint) 0.9px, transparent 1.2px) left bottom / 5px 2.5px repeat-x;
                 }
             """.trimIndent(),
         ),
@@ -112,6 +135,12 @@ fun pencilDecorations(notes: List<Note>, flashId: Long?, dark: Boolean): List<De
             )
         }
         .flatten()
+}
+
+fun spokenDecorations(sentence: Locator?, dark: Boolean): List<Decoration> {
+    sentence ?: return emptyList()
+    val tint = (if (dark) Palette.NightGraphite else Palette.Graphite).toArgb()
+    return listOf(Decoration("spoken", sentence, SpokenLine(tint)))
 }
 
 @OptIn(ExperimentalReadiumApi::class)

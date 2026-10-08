@@ -1,6 +1,9 @@
 package app.reed.reader
 
 import android.app.Application
+import android.content.Intent
+import android.os.SystemClock
+import android.speech.tts.TextToSpeech
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -13,6 +16,9 @@ import app.reed.data.NoteKind
 import app.reed.data.ReadingSettings
 import app.reed.data.serialize
 import app.reed.data.toLocator
+import app.reed.listen.ListenSpeeds
+import app.reed.listen.ReadAloud
+import app.reed.listen.forBook
 import app.reed.reed
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -23,12 +29,16 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import org.readium.r2.shared.publication.Link
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
+import org.readium.r2.shared.util.Url
 
 /** A note being written or edited in the note sheet. */
 data class NoteDraft(
@@ -58,6 +68,7 @@ class ReaderViewModel(
 
     private val library = app.reed.library
     private val settingsStore = app.reed.settings
+    private val readAloud = app.reed.readAloud
 
     var session: ReaderSession? = null
         private set
@@ -77,15 +88,34 @@ class ReaderViewModel(
     val flashNoteId = MutableStateFlow<Long?>(null)
     val currentLocator = MutableStateFlow<Locator?>(null)
 
+    /** Reading aloud, when it's this book being read. */
+    val listening: StateFlow<ReadAloud.State?> = readAloud.state.forBook(bookId)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val listenSpeed: StateFlow<Double> = readAloud.speed
+
     private val messageChannel = Channel<ReaderMessage>(Channel.BUFFERED)
     val messages = messageChannel.receiveAsFlow()
 
     private var flashJob: Job? = null
 
+    /**
+     * The sentence reading aloud stopped at, kept while the reader stays on the page showing it
+     * ([listenPage]). Moving to another page forgets it, so the next listen starts there instead.
+     */
+    private var resumeAt: Locator? = null
+    private var listenPage: Locator? = null
+    /** Page changes until then come from following the voice, opening the book or relayout, not the reader. */
+    private var settleUntil = 0L
+
     init {
         viewModelScope.launch {
             currentLocator.filterNotNull().debounce(600).collect { library.savePosition(bookId, it) }
         }
+        listening.filterNotNull().onEach { resumeAt = it.sentence }.launchIn(viewModelScope)
+        // The microphone shouldn't hear the book: a note sheet pauses the voice.
+        draft.filterNotNull().onEach { if (listening.value?.playing == true) readAloud.pause() }.launchIn(viewModelScope)
+        readAloud.events.onEach(::onReadAloudEvent).launchIn(viewModelScope)
     }
 
     /** Opens the publication once; survives configuration changes. */
@@ -94,6 +124,7 @@ class ReaderViewModel(
         val book = library.book(bookId) ?: return null
         val publication = library.open(book) ?: return null
         val initial = jumpTo?.toLocator() ?: book.lastLocator?.toLocator()
+        if (jumpTo == null) resumeAt = book.listenLocator?.toLocator()
         library.markOpened(bookId)
         jumpNoteId?.let { flash(it, delayMs = 700) }
         return ReaderSession(book, publication, initial).also { session = it }
@@ -103,22 +134,85 @@ class ReaderViewModel(
 
     fun onLocator(locator: Locator) {
         currentLocator.value = if (locator.title.isNullOrBlank()) locator.copy(title = chapterAt(locator)) else locator
+        trackListenPage(locator)
     }
 
-    /** Many books leave locator titles empty; fall back to the table of contents. */
-    private fun chapterAt(locator: Locator): String? {
-        val publication = session?.publication ?: return null
-        val href = locator.href.removeFragment()
-        fun search(links: List<Link>): String? {
-            for (link in links) {
-                if (link.url().removeFragment() == href && !link.title.isNullOrBlank()) return link.title
-                search(link.children)?.let { return it }
-            }
-            return null
+    private fun trackListenPage(page: Locator) {
+        if (resumeAt == null) return
+        val anchor = listenPage
+        if (anchor == null || listening.value?.playing == true || SystemClock.elapsedRealtime() < settleUntil) {
+            listenPage = page
+        } else if (!page.samePlace(anchor)) {
+            resumeAt = null
+            listenPage = null
+            viewModelScope.launch { library.clearListenPosition(bookId) }
         }
-        return search(publication.tableOfContents)
-            ?: publication.readingOrder.firstOrNull { it.url().removeFragment() == href }?.title
     }
+
+    /** The page is about to move for a reason other than the reader turning it. */
+    fun settle(ms: Long = 1200) {
+        settleUntil = SystemClock.elapsedRealtime() + ms
+    }
+
+    /**
+     * Reads aloud from where it last stopped if that's still on screen, otherwise from the top of
+     * the page ([pageStart]).
+     */
+    fun listen(pageStart: suspend () -> Locator?) {
+        chromeVisible.value = false
+        viewModelScope.launch {
+            if (readAloud.isReading(bookId)) {
+                if (resumeAt == null) pageStart()?.let(readAloud::go)
+                readAloud.play()
+            } else {
+                readAloud.start(bookId, resumeAt ?: pageStart() ?: currentLocator.value)
+            }
+        }
+    }
+
+    fun pauseListening() = readAloud.pause()
+
+    fun resumeListening() = readAloud.play()
+
+    fun nextSentence() = readAloud.next()
+
+    fun previousSentence() = readAloud.previous()
+
+    fun stopListening() = readAloud.stop()
+
+    fun cycleListenSpeed() {
+        val next = ListenSpeeds.firstOrNull { it > listenSpeed.value + 0.01 } ?: ListenSpeeds.first()
+        readAloud.setSpeed(next)
+    }
+
+    private suspend fun onReadAloudEvent(event: ReadAloud.Event) {
+        val message = when (event) {
+            is ReadAloud.Event.Finished -> {
+                if (event.bookId == bookId) resumeAt = null
+                return
+            }
+            ReadAloud.Event.NoEngine -> ReaderMessage(
+                "No text-to-speech engine on this phone",
+                action = "Settings",
+                onAction = { openSystem(Intent(TTS_SETTINGS)) },
+            )
+            ReadAloud.Event.Unreadable -> ReaderMessage("This book can't be read aloud")
+            is ReadAloud.Event.MissingVoice -> ReaderMessage(
+                "No ${event.language} voice installed",
+                action = "Install",
+                onAction = { openSystem(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) },
+            )
+            ReadAloud.Event.NeedsNetwork -> ReaderMessage("This voice needs an internet connection")
+            ReadAloud.Event.Failed -> ReaderMessage("Reading aloud stopped")
+        }
+        messageChannel.send(message)
+    }
+
+    private fun openSystem(intent: Intent) {
+        runCatching { getApplication<Application>().startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
+
+    private fun chapterAt(locator: Locator): String? = session?.publication?.chapterTitle(locator.href)
 
     fun toggleChrome() {
         chromeVisible.value = !chromeVisible.value
@@ -241,6 +335,7 @@ class ReaderViewModel(
     }
 
     fun updateSettings(transform: (ReadingSettings) -> ReadingSettings) {
+        settle(2000)
         viewModelScope.launch { settingsStore.updateReading(transform) }
     }
 
@@ -255,7 +350,30 @@ class ReaderViewModel(
     }
 }
 
+/** Many books leave locator titles empty; fall back to the table of contents. */
+fun Publication.chapterTitle(href: Url): String? {
+    val target = href.removeFragment()
+    fun search(links: List<Link>): String? {
+        for (link in links) {
+            if (link.url().removeFragment() == target && !link.title.isNullOrBlank()) return link.title
+            search(link.children)?.let { return it }
+        }
+        return null
+    }
+    return search(tableOfContents)
+        ?: readingOrder.firstOrNull { it.url().removeFragment() == target }?.title
+}
+
 private fun String.collapseWhitespace() = replace(Regex("\\s+"), " ")
+
+/** Same page of the visual navigator: positions are only comparable within one layout. */
+private fun Locator.samePlace(other: Locator): Boolean {
+    val a = locations.progression ?: return false
+    val b = other.locations.progression ?: return false
+    return href == other.href && abs(a - b) < 1e-6
+}
+
+private const val TTS_SETTINGS = "com.android.settings.TTS_SETTINGS"
 
 private fun Locator.samePage(other: Locator): Boolean {
     val a = locations.position
